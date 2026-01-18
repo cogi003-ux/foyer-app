@@ -1,56 +1,54 @@
 import streamlit as st
-import pandas as pd
-import os
 
-st.set_page_config(page_title="Foyer App", layout="centered")
+st.set_page_config(page_title="Foyer Magique", page_icon="✨")
 
-# --- FICHIER DE SAUVEGARDE ---
-DB_FILE = "foyer_data.csv"
+# Style pour que ça ressemble à un jeu mobile
+st.markdown("""
+    <style>
+    .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+    .mission-card {
+        background: white; border-radius: 20px; padding: 20px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1); border-left: 10px solid #FFD700;
+        margin-bottom: 20px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-def load_data():
-    if os.path.exists(DB_FILE):
-        return pd.read_csv(DB_FILE).to_dict('records')
-    return [
-        {"tâche": "Mettre le couvert", "points": 5, "statut": "À faire"},
-        {"tâche": "Ranger la chambre", "points": 10, "statut": "À faire"}
-    ]
+st.title("🚀 Missions de Super-Héros")
 
-if 'tasks' not in st.session_state:
-    st.session_state.tasks = load_data()
-if 'solde' not in st.session_state:
-    st.session_state.solde = sum(t['points'] for t in st.session_state.tasks if t['statut'] == "Terminé")
+# --- BARRE DE PROGRESSION VERS LE CADEAU ---
+# On simule un trésor de 25 points pour commencer
+if 'points' not in st.session_state: st.session_state.points = 25
 
-# --- INTERFACE ---
-st.title("🏠 Notre Foyer")
+st.header("🏆 Objectif : Sortie Cinéma")
+objectif = 100
+progression = min(st.session_state.points / objectif, 1.0)
 
-user = st.selectbox("Qui utilise l'app ?", ["Papa", "Maman", "Enfant 1"])
+st.progress(progression)
+st.subheader(f"🌟 {st.session_state.points} / {objectif} Points")
+st.caption(f"Encore {max(0, objectif - st.session_state.points)} points pour gagner la surprise !")
 
-tab1, tab2 = st.tabs(["📋 Tâches", "🎁 Boutique"])
+# --- LISTE DES MISSIONS ---
+missions = [
+    {"nom": "🍽️ Chef de Table", "desc": "Mettre le couvert proprement", "pts": 10},
+    {"nom": "🧸 Magicien du Salon", "desc": "Ranger tous les jouets éparpillés", "pts": 15},
+    {"nom": "🚀 Mission Décollage", "desc": "Faire son lit et ranger son pyjama", "pts": 10},
+    {"nom": "🦷 Sourire de Star", "desc": "Brossage de dents sans rappel", "pts": 5}
+]
 
-with tab1:
-    st.subheader("Tâches du jour")
-    for i, t in enumerate(st.session_state.tasks):
-        if t['statut'] != "Terminé":
-            col1, col2 = st.columns([3, 1])
-            col1.write(f"**{t['tâche']}** ({t['points']} pts)")
-            if col2.button("Fait", key=f"t_{i}"):
-                st.session_state.tasks[i]['statut'] = "Terminé"
-                st.session_state.solde += t['points']
-                pd.DataFrame(st.session_state.tasks).to_csv(DB_FILE, index=False)
-                st.rerun()
+st.write("### Tes missions du jour :")
 
-with tab2:
-    st.subheader("Boutique de récompenses")
-    st.metric("Votre Solde", f"{st.session_state.solde} pts")
-    
-    recompenses = {"30 min de Console": 50, "Dessert au choix": 30, "Petit jouet": 100}
-    
-    for item, prix in recompenses.items():
-        col1, col2 = st.columns([3, 1])
-        col1.write(f"**{item}**")
-        if col2.button(f"{prix} pts", key=item):
-            if st.session_state.solde >= prix:
-                st.session_state.solde -= prix
-                st.success(f"Bravo ! Tu as acheté : {item}")
-            else:
-                st.error("Pas assez de points !")
+for m in missions:
+    with st.container():
+        st.markdown(f"""
+        <div class="mission-card">
+            <span style="float:right; font-weight:bold; color:#FFD700;">+{m['pts']} pts</span>
+            <h3>{m['nom']}</h3>
+            <p>{m['desc']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button(f"Mission {m['nom']} accomplie !", key=m['nom']):
+            st.session_state.points += m['pts']
+            st.balloons()
+            st.success(f"Bravo ! Ton trésor grandit de {m['pts']} points !")
+            st.rerun()
