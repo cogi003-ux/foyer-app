@@ -1,94 +1,148 @@
 import streamlit as st
-from datetime import datetime
 import pandas as pd
 
-# Configuration de la page
-st.set_page_config(page_title="Foyer Magique 🏡", page_icon="✨", layout="centered")
+# --- CONFIGURATION SÉCURITÉ ---
+PIN_PARENT = "1234" 
 
-# Style CSS pour une interface ludique
+st.set_page_config(page_title="Foyer Magique 🏡", page_icon="✨", layout="wide")
+
+# --- INITIALISATION ---
+if 'config' not in st.session_state:
+    st.session_state.config = {"parents": ["Papa", "Maman"], "ados": ["Ado 1"], "enfants": ["Enfant 1", "Enfant 2"]}
+if 'points_foyer' not in st.session_state:
+    st.session_state.points_foyer = 0
+if 'attente_validation' not in st.session_state:
+    st.session_state.attente_validation = []
+if 'parent_authenticated' not in st.session_state:
+    st.session_state.parent_authenticated = False
+if 'classement' not in st.session_state:
+    st.session_state.classement = {}
+if 'achats_en_attente' not in st.session_state:
+    st.session_state.achats_en_attente = []
+
+# --- STYLE CSS ---
 st.markdown("""
     <style>
-    .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
-    .mission-card {
-        background: white; border-radius: 15px; padding: 15px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-left: 8px solid #FFD700;
-        margin-bottom: 15px;
-    }
-    .pts-tag { float: right; font-weight: bold; color: #4CAF50; background: #e8f5e9; padding: 2px 8px; border-radius: 10px; }
+    .stApp { background-color: #f8f9fa; }
+    .mission-card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 6px solid #FFD700; margin-bottom: 10px; }
+    .reward-card { background: white; border-radius: 12px; padding: 15px; border-top: 5px solid #FF4B4B; text-align: center; margin-bottom: 5px; }
+    .category-header { background: #343a40; color: white; padding: 8px 15px; border-radius: 8px; margin-top: 20px; font-weight: bold; text-transform: uppercase; }
+    .pts-badge { float: right; color: #28a745; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-# Initialisation du score global dans la session
-if 'points_foyer' not in st.session_state:
-    st.session_state.points_foyer = 0
+# --- NAVIGATION ---
+mode = st.sidebar.radio("Menu", ["🚀 Missions", "🏆 Classement", "🎁 Boutique", "⚙️ Gérer & Valider"])
+st.sidebar.divider()
+st.sidebar.metric("💰 Trésor Commun", f"{st.session_state.points_foyer} pts")
 
-st.title("🏡 Le Foyer Magique")
+if st.sidebar.button("🔒 Verrouiller"):
+    st.session_state.parent_authenticated = False
+    st.rerun()
 
-# --- SÉLECTION DU PROFIL ---
-user = st.selectbox("Qui es-tu aujourd'hui ?", ["Papa", "Maman", "Ados", "Enfant 1", "Enfant 2"])
-
-# --- STRUCTURE DES MISSIONS ---
-# Catégories : 'Enfant', 'Ado/Parent', 'Parent'
-missions_data = [
-    # MISSIONS ENFANTS
-    {"nom": "🚀 Mission Décollage", "desc": "Faire son lit et ranger son pyjama", "pts": 10, "freq": "Quotidien", "cat": "Enfant"},
-    {"nom": "🦷 Sourire de Star", "desc": "Brossage de dents (sans rouspéter)", "pts": 5, "freq": "2x / jour", "cat": "Enfant"},
-    {"nom": "🍽️ Maître du Couvert", "desc": "Mettre la table proprement", "pts": 10, "freq": "Chaque repas", "cat": "Enfant"},
-    {"nom": "🧼 Ranger l'assiette", "desc": "Débarrasser la table", "pts": 10, "freq": "Chaque repas", "cat": "Enfant"},
-    {"nom": "🧸 Magicien du Salon", "desc": "Ranger les jouets éparpillés", "pts": 15, "freq": "Quotidien", "cat": "Enfant"},
-    {"nom": "🏰 Gardien de la Chambre", "desc": "Ranger sa chambre à fond", "pts": 25, "freq": "Hebdomadaire", "cat": "Enfant"},
-    
-    # MISSIONS ADOS / PARENTS
-    {"nom": "🗑️ Alerte Déchets", "desc": "Sortir les poubelles (Lundi ou Mercredi soir)", "pts": 20, "freq": "1 sem / 2", "cat": "Ado/Parent"},
-    {"nom": "🌀 Tornade Aspirateur", "desc": "Passer l'aspirateur au rez-de-chaussée", "pts": 15, "freq": "2x / semaine", "cat": "Ado/Parent"},
-    {"nom": "✨ Miroir d'Eau", "desc": "Passer la serpillière en bas", "pts": 20, "freq": "Hebdomadaire", "cat": "Ado/Parent"},
-    {"nom": "📦 Lutin du Recyclage", "desc": "Vider les petites poubelles intérieures", "pts": 10, "freq": "Si nécessaire", "cat": "Ado/Parent"},
-    {"nom": "🍽️ Plongeur d'élite", "desc": "Faire la vaisselle", "pts": 15, "freq": "Si nécessaire", "cat": "Ado/Parent"},
-    {"nom": "🏎️ Car Wash Privé", "desc": "Laver la voiture familiale", "pts": 40, "freq": "Mensuel", "cat": "Ado/Parent"},
-    {"nom": "🚜 Maître de la Jungle", "desc": "Tondre la pelouse (Saisonnier)", "pts": 40, "freq": "1 sem / 2 (Eté)", "cat": "Ado/Parent"},
-    {"nom": "👟 Gardien du Hall", "desc": "Aligner les chaussures dans l'entrée", "pts": 5, "freq": "Quotidien", "cat": "Ado/Parent"},
-    {"nom": "🧺 Expert du Linge", "desc": "Plier une panière de linge propre", "pts": 15, "freq": "Si nécessaire", "cat": "Ado/Parent"},
-
-    # MISSIONS PARENTS UNIQUEMENT
-    {"nom": "🍳 Chef Étoilé", "desc": "Cuisiner un bon repas", "pts": 20, "freq": "Quotidien", "cat": "Parent"},
-    {"nom": "🛁 Opération Éclat", "desc": "Nettoyer les WC Haut et Bas", "pts": 30, "freq": "Hebdomadaire", "cat": "Parent"},
-    {"nom": "⚡ Micro-Onde Brillant", "desc": "Laver l'intérieur du micro-onde", "pts": 15, "freq": "1 sem / 2", "cat": "Parent"},
-    {"nom": "🌬️ Chasse à la Poussière", "desc": "Faire les poussières en bas", "pts": 10, "freq": "1 sem / 2", "cat": "Parent"},
-    {"nom": "🏰 Grand Nettoyage", "desc": "Haut : Aspi + Serpi + Poussière + SdB", "pts": 40, "freq": "1 sem / 2", "cat": "Parent"},
-    {"nom": "🧊 Frigo comme Neuf", "desc": "Nettoyage complet du réfrigérateur", "pts": 20, "freq": "Mensuel", "cat": "Parent"},
-    {"nom": "🔥 Mission Pyrolyse", "desc": "Laver le four", "pts": 50, "freq": "Mensuel", "cat": "Parent"},
-    {"nom": "💎 Vue Cristalline", "desc": "Nettoyer les vitres", "pts": 50, "freq": "Tous les 2 mois", "cat": "Parent"}
-]
-
-# --- AFFICHAGE DU SCORE ---
-st.sidebar.header("🏆 Trésor du Foyer")
-st.sidebar.metric("Points cumulés", f"{st.session_state.points_foyer} pts")
-st.sidebar.progress(min(st.session_state.points_foyer / 500, 1.0))
-st.sidebar.write("Objectif : 500 pts pour une surprise !")
-
-# --- FILTRAGE DES MISSIONS ---
-if user in ["Enfant 1", "Enfant 2"]:
-    ma_liste = [m for m in missions_data if m['cat'] == "Enfant"]
-elif user == "Ados":
-    ma_liste = [m for m in missions_data if m['cat'] == "Ado/Parent"]
-else: # Parents
-    ma_liste = [m for m in missions_data if m['cat'] in ["Parent", "Ado/Parent"]]
-
-# --- AFFICHAGE DES CARTES ---
-st.subheader(f"Missions pour {user} :")
-
-for m in ma_liste:
-    with st.container():
-        st.markdown(f"""
-        <div class="mission-card">
-            <span class="pts-tag">+{m['pts']} pts</span>
-            <div style="font-size: 0.8em; color: gray;">{m['freq']}</div>
-            <strong style="font-size: 1.1em;">{m['nom']}</strong><br>
-            <span style="color: #555;">{m['desc']}</span>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button(f"Valider : {m['nom']}", key=m['nom']):
-            st.session_state.points_foyer += m['pts']
-            st.balloons()
-            st.success(f"Bravo {user} ! Tu as gagné {m['pts']} points.")
+# 1. GESTION
+if mode == "⚙️ Gérer & Valider":
+    if not st.session_state.parent_authenticated:
+        pin = st.text_input("PIN Parent :", type="password")
+        if pin == PIN_PARENT:
+            st.session_state.parent_authenticated = True
             st.rerun()
+        st.stop()
+    
+    st.title("🛡️ Espace Parents")
+    col_v, col_a = st.columns(2)
+    with col_v:
+        st.subheader("✅ Missions")
+        for idx, d in enumerate(st.session_state.attente_validation):
+            if st.button(f"Valider {d['user']} : {d['task']}", key=f"v_{idx}"):
+                st.session_state.points_foyer += d['pts']
+                st.session_state.classement[d['user']] = st.session_state.classement.get(d['user'], 0) + d['pts']
+                st.session_state.attente_validation.pop(idx)
+                st.rerun()
+    with col_a:
+        st.subheader("🎁 Achats")
+        for idx, a in enumerate(st.session_state.achats_en_attente):
+            if st.button(f"Livrer {a['item']} à {a['user']}", key=f"l_{idx}"):
+                st.session_state.achats_en_attente.pop(idx)
+                st.rerun()
+
+# 2. CLASSEMENT
+elif mode == "🏆 Classement":
+    st.title("🏆 Tableau d'Honneur")
+    if st.session_state.classement:
+        df = pd.DataFrame(list(st.session_state.classement.items()), columns=['Héros', 'Points']).sort_values(by='Points', ascending=False)
+        st.table(df)
+
+# 3. BOUTIQUE (VERSION CORRIGÉE)
+elif mode == "🎁 Boutique":
+    st.title("🎁 La Boutique")
+    user_list = st.session_state.config["parents"] + st.session_state.config["ados"] + st.session_state.config["enfants"]
+    shopper = st.selectbox("Qui fait ses courses ?", user_list)
+    pts = st.session_state.classement.get(shopper, 0)
+    st.metric("Tes points", f"{pts} pts")
+
+    recompenses = [
+        {"item": "📺 30 min d'écran", "prix": 50},
+        {"item": "🍦 Dessert au choix", "prix": 30},
+        {"item": "🎬 Soirée Cinéma", "prix": 100},
+        {"item": "🍕 Menu Pizza", "prix": 150}
+    ]
+
+    c1, c2 = st.columns(2)
+    for i, r in enumerate(recompenses):
+        with (c1 if i % 2 == 0 else c2):
+            st.markdown(f"<div class='reward-card'><b>{r['item']}</b><br>💰 {r['prix']} pts</div>", unsafe_allow_html=True)
+            if st.button(f"Acheter {r['item']}", key=f"buy_{i}"):
+                if pts >= r['prix']:
+                    st.session_state.classement[shopper] -= r['prix']
+                    st.session_state.achats_en_attente.append({"user": shopper, "item": r['item']})
+                    st.success("Demande envoyée !")
+                else: st.error("Pas assez de points !")
+
+# 4. MISSIONS
+else:
+    all_users = st.session_state.config["parents"] + st.session_state.config["ados"] + st.session_state.config["enfants"]
+    current_user = st.selectbox("Qui es-tu ?", all_users)
+    is_parent = current_user in st.session_state.config["parents"]
+    
+    if is_parent and not st.session_state.parent_authenticated:
+        p = st.text_input("PIN :", type="password")
+        if p == PIN_PARENT:
+            st.session_state.parent_authenticated = True
+            st.rerun()
+        st.stop()
+
+    tasks = [
+        {"n": "🍳 Chef Étoilé", "p": 20, "c": "Cuisine", "r": ["Parent"]},
+        {"n": "🍽️ Maître du Couvert", "p": 10, "c": "Cuisine", "r": ["Enfant"]},
+        {"n": "🧼 Ranger l'assiette", "p": 10, "c": "Cuisine", "r": ["Enfant"]},
+        {"n": "🍽️ Plongeur d'élite", "p": 15, "c": "Cuisine", "r": ["Parent", "Ado"]},
+        {"n": "🌀 Tornade Aspirateur", "p": 15, "c": "Ménage", "r": ["Parent", "Ado"]},
+        {"n": "🏰 Grand Nettoyage", "p": 40, "c": "Ménage", "r": ["Parent"]},
+        {"n": "🧸 Magicien du Salon", "p": 15, "c": "Ménage", "r": ["Enfant"]},
+        {"n": "🚀 Mission Décollage", "p": 10, "c": "Ménage", "r": ["Enfant"]},
+        {"n": "🦷 Sourire de Star", "p": 5, "c": "Hygiène", "r": ["Enfant"]},
+        {"n": "🗑️ Alerte Déchets", "p": 20, "c": "Déchets", "r": ["Parent", "Ado"]},
+        {"n": "🏎️ Car Wash Privé", "p": 40, "c": "Extérieur", "r": ["Parent", "Ado"]},
+        {"n": "💎 Vue Cristalline", "p": 50, "c": "Extérieur", "r": ["Parent"]}
+    ]
+
+    pending = [d['task'] for d in st.session_state.attente_validation if d['user'] == current_user]
+    role = "Parent" if is_parent else "Ado" if current_user in st.session_state.config["ados"] else "Enfant"
+
+    for cat in ["Cuisine", "Ménage", "Hygiène", "Déchets", "Extérieur"]:
+        cat_t = [t for t in tasks if t["c"] == cat and role in t["r"]]
+        if cat_t:
+            st.markdown(f"<div class='category-header'>{cat}</div>", unsafe_allow_html=True)
+            for t in cat_t:
+                col_i, col_b = st.columns([5, 1.5])
+                with col_i: st.markdown(f"<div class='mission-card'><span class='pts-badge'>+{t['p']}</span><b>{t['n']}</b></div>", unsafe_allow_html=True)
+                with col_b:
+                    if t['n'] in pending: st.button("⌛ Attente", key=f"p_{t['n']}", disabled=True)
+                    else:
+                        if st.button("Fait ✅", key=f"f_{t['n']}"):
+                            if is_parent:
+                                st.session_state.points_foyer += t['p']
+                                st.session_state.classement[current_user] = st.session_state.classement.get(current_user, 0) + t['p']
+                            else: st.session_state.attente_validation.append({"user": current_user, "task": t['n'], "pts": t['p']})
+                            st.rerun()
