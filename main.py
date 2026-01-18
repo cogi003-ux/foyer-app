@@ -1,176 +1,178 @@
 import streamlit as st
 import pandas as pd
+import json
+import os
 
-# --- CONFIGURATION SÉCURITÉ ---
+# --- CONFIGURATION & SAUVEGARDE ---
 PIN_PARENT = "1234" 
+DB_FILE = "data_foyer.json"
 
-st.set_page_config(page_title="Foyer Magique 🏡", page_icon="✨", layout="wide")
+def charger_donnees():
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r") as f:
+            return json.load(f)
+    return {
+        "points_foyer": 0,
+        "classement": {},
+        "attente_validation": [],
+        "achats_en_attente": []
+    }
+
+def sauvegarder_donnees():
+    donnees = {
+        "points_foyer": st.session_state.points_foyer,
+        "classement": st.session_state.classement,
+        "attente_validation": st.session_state.attente_validation,
+        "achats_en_attente": st.session_state.achats_en_attente
+    }
+    with open(DB_FILE, "w") as f:
+        json.dump(donnees, f)
 
 # --- INITIALISATION ---
+st.set_page_config(page_title="Foyer Magique 🏡", page_icon="✨", layout="wide")
+saved_data = charger_donnees()
+
+for key, value in saved_data.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
 if 'config' not in st.session_state:
     st.session_state.config = {"parents": ["Papa", "Maman"], "ados": ["Ado 1"], "enfants": ["Enfant 1", "Enfant 2"]}
-if 'points_foyer' not in st.session_state:
-    st.session_state.points_foyer = 0
-if 'attente_validation' not in st.session_state:
-    st.session_state.attente_validation = []
 if 'parent_authenticated' not in st.session_state:
     st.session_state.parent_authenticated = False
-if 'classement' not in st.session_state:
-    st.session_state.classement = {}
-if 'achats_en_attente' not in st.session_state:
-    st.session_state.achats_en_attente = []
 
-# --- STYLE CSS ---
+# --- STYLE CSS SPÉCIAL SMARTPHONE & MODE SOMBRE ---
 st.markdown("""
     <style>
-    .stApp { background-color: #f8f9fa; }
-    .mission-card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 6px solid #FFD700; margin-bottom: 10px; }
-    .reward-card { background: white; border-radius: 12px; padding: 15px; border-top: 5px solid #FF4B4B; text-align: center; margin-bottom: 5px; }
-    .category-header { background: #343a40; color: white; padding: 8px 15px; border-radius: 8px; margin-top: 20px; font-weight: bold; text-transform: uppercase; }
-    .pts-badge { float: right; color: #28a745; font-weight: bold; margin-left: 10px; }
-    .freq-badge { float: right; color: #FF4B4B; font-size: 0.8em; font-weight: bold; background: #ffebee; padding: 2px 6px; border-radius: 4px; }
-    .desc-text { font-size: 0.85em; color: #666; margin-top: 4px; display: block; font-style: italic; }
+    /* 1. Boutons larges pour le pouce */
+    .stButton>button {
+        width: 100%; 
+        border-radius: 12px; 
+        height: 4.5em;
+        background-color: #007bff; 
+        color: white !important; 
+        font-weight: bold;
+        font-size: 1.1em;
+        border: none;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        margin-bottom: 20px;
+    }
+    
+    /* 2. Titres de catégories ultra-lisibles (Bleu Azur) */
+    .category-header { 
+        background: #1E88E5; 
+        color: white !important; 
+        padding: 12px; 
+        border-radius: 10px; 
+        margin-top: 25px; 
+        margin-bottom: 15px;
+        text-align: center;
+        font-weight: bold;
+        text-transform: uppercase;
+        border: 2px solid #64B5F6;
+    }
+    
+    /* 3. Boîtes de missions (S'adaptent au fond clair/sombre) */
+    .mission-box {
+        background: rgba(255, 255, 255, 0.1); 
+        padding: 20px; 
+        border-radius: 15px;
+        border: 1px solid rgba(128, 128, 128, 0.3);
+        margin-bottom: 10px;
+        border-left: 10px solid #FFD700;
+    }
+    
+    /* 4. Points et Textes */
+    .pts-label { color: #4CAF50; font-weight: bold; font-size: 1.3em; float: right; }
+    .mission-title { font-weight: bold; font-size: 1.2em; display: block; }
+    .description-text { color: #A0A0A0; font-size: 0.95em; line-height: 1.4; margin-top: 8px; font-style: italic; }
+    
+    /* Ajustement pour le texte en mode sombre de Streamlit */
+    [data-testid="stMarkdownContainer"] p {
+        font-size: 1.05em;
+    }
     </style>
 """, unsafe_allow_html=True)
 
+def update_and_save():
+    sauvegarder_donnees()
+    st.rerun()
+
 # --- NAVIGATION ---
-mode = st.sidebar.radio("Menu", ["🚀 Missions", "🏆 Classement", "🎁 Boutique", "⚙️ Gérer & Valider"])
+st.sidebar.title("🏡 Menu Foyer")
+mode = st.sidebar.radio("Aller vers :", ["🚀 Missions", "🏆 Classement", "🎁 Boutique", "⚙️ Espace Parents"])
 st.sidebar.divider()
 st.sidebar.metric("💰 Trésor Commun", f"{st.session_state.points_foyer} pts")
 
-if st.sidebar.button("🔒 Verrouiller l'accès Parent"):
-    st.session_state.parent_authenticated = False
-    st.rerun()
+# --- 1. MISSIONS (TITRES FUN + SMARTPHONE FRIENDLY) ---
+if mode == "🚀 Missions":
+    st.title("🚀 Missions Magiques")
+    all_users = st.session_state.config["parents"] + st.session_state.config["ados"] + st.session_state.config["enfants"]
+    current_user = st.selectbox("Qui cherche une mission ?", all_users)
+    role = "Parent" if current_user in st.session_state.config["parents"] else "Ado" if current_user in st.session_state.config["ados"] else "Enfant"
 
-# 1. GESTION
-if mode == "⚙️ Gérer & Valider":
-    if not st.session_state.parent_authenticated:
-        pin = st.text_input("PIN Parent :", type="password")
-        if pin == PIN_PARENT:
-            st.session_state.parent_authenticated = True
-            st.rerun()
-        st.stop()
-    
-    st.title("🛡️ Espace Parents")
-    col_v, col_a = st.columns(2)
-    with col_v:
-        st.subheader("✅ Missions à confirmer")
-        if not st.session_state.attente_validation: st.info("Rien à valider.")
-        for idx, d in enumerate(st.session_state.attente_validation):
-            if st.button(f"Valider {d['user']} : {d['task']}", key=f"v_{idx}"):
-                st.session_state.points_foyer += d['pts']
-                st.session_state.classement[d['user']] = st.session_state.classement.get(d['user'], 0) + d['pts']
-                st.session_state.attente_validation.pop(idx)
-                st.rerun()
-    with col_a:
-        st.subheader("🎁 Achats à livrer")
-        if not st.session_state.achats_en_attente: st.info("Aucun achat.")
-        for idx, a in enumerate(st.session_state.achats_en_attente):
-            if st.button(f"Livrer {a['item']} à {a['user']}", key=f"l_{idx}"):
-                st.session_state.achats_en_attente.pop(idx)
-                st.rerun()
+    tasks = [
+        {"n": "🍳 Chef Étoilé Michelin", "p": 25, "c": "Cuisine", "r": ["Parent"], "d": "Concocter un repas digne d'un grand restaurant."},
+        {"n": "🍽️ Maître du Dressage", "p": 10, "c": "Cuisine", "r": ["Enfant", "Ado"], "d": "Mettre la table avec soin (assiettes, couverts, verres)."},
+        {"n": "🧼 Ninja du Débarrassage", "p": 10, "c": "Cuisine", "r": ["Enfant", "Ado"], "d": "Faire disparaître la vaisselle sale de la table."},
+        {"n": "🌊 Plongeur de l'Atlantide", "p": 15, "c": "Cuisine", "r": ["Parent", "Ado"], "d": "Vider ou vider le lave-vaisselle pour une cuisine au top."},
+        {"n": "🌀 Aspirateur-Man", "p": 20, "c": "Ménage", "r": ["Parent", "Ado"], "d": "Aspirer tout le rez-de-chaussée."},
+        {"n": "✨ Fée de la Serpillière", "p": 20, "c": "Ménage", "r": ["Parent", "Ado"], "d": "Faire briller le sol pour qu'on puisse se voir dedans."},
+        {"n": "🧸 Rangement Express", "p": 15, "c": "Ménage", "r": ["Enfant"], "d": "Ramasser tous les jouets du salon."},
+        {"n": "🚀 Mission Décollage", "p": 10, "c": "Ménage", "r": ["Enfant"], "d": "Faire son lit au carré et ranger son pyjama."},
+        {"n": "🚜 Dompteur de Jungle", "p": 50, "c": "Extérieur", "r": ["Parent", "Ado"], "d": "Tondre la pelouse pour un jardin parfait."},
+        {"n": "🗑️ Maître des Bacs", "p": 15, "c": "Ménage", "r": ["Parent", "Ado"], "d": "Sortir les poubelles avant que le camion ne passe."},
+        {"n": "👟 Gardien du Hall", "p": 5, "c": "Ménage", "r": ["Enfant", "Ado", "Parent"], "d": "Aligner toutes les chaussures dans le hall."}
+    ]
 
-# 2. CLASSEMENT
+    for cat in ["Cuisine", "Ménage", "Extérieur"]:
+        cat_t = [t for t in tasks if t["c"] == cat and role in t["r"]]
+        if cat_t:
+            st.markdown(f"<div class='category-header'>{cat}</div>", unsafe_allow_html=True)
+            for t in cat_t:
+                st.markdown(f"""
+                    <div class='mission-box'>
+                        <span class='pts-label'>+{t['p']} pts</span>
+                        <span class='mission-title'>{t['n']}</span>
+                        <span class='description-text'>👉 {t['d']}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                label = "Vérifier & Valider ✅" if role == "Parent" else "J'ai fini ! 🚀"
+                if st.button(label, key=f"btn_{t['n']}_{current_user}"):
+                    if role == "Parent":
+                        st.session_state.points_foyer += t['p']
+                        st.session_state.classement[current_user] = st.session_state.classement.get(current_user, 0) + t['p']
+                    else:
+                        st.session_state.attente_validation.append({"user": current_user, "task": t['n'], "pts": t['p']})
+                    update_and_save()
+
+# --- 2. CLASSEMENT ---
 elif mode == "🏆 Classement":
     st.title("🏆 Tableau d'Honneur")
     if st.session_state.classement:
         df = pd.DataFrame(list(st.session_state.classement.items()), columns=['Héros', 'Points']).sort_values(by='Points', ascending=False)
         st.table(df)
+    else: st.info("Le tableau est vide, à vous de jouer !")
 
-# 3. BOUTIQUE
-elif mode == "🎁 Boutique":
-    st.title("🎁 La Boutique")
-    user_list = st.session_state.config["parents"] + st.session_state.config["ados"] + st.session_state.config["enfants"]
-    shopper = st.selectbox("Qui fait ses courses ?", user_list)
-    pts = st.session_state.classement.get(shopper, 0)
-    st.metric("Tes points disponibles", f"{pts} pts")
-
-    recompenses = [
-        {"item": "📺 30 min d'écran", "prix": 50},
-        {"item": "🍦 Dessert au choix", "prix": 30},
-        {"item": "🎬 Soirée Cinéma", "prix": 100},
-        {"item": "🍕 Menu Pizza", "prix": 150}
-    ]
-
-    c1, c2 = st.columns(2)
-    for i, r in enumerate(recompenses):
-        with (c1 if i % 2 == 0 else c2):
-            st.markdown(f"<div class='reward-card'><b>{r['item']}</b><br>💰 {r['prix']} pts</div>", unsafe_allow_html=True)
-            if st.button(f"Acheter {r['item']}", key=f"buy_{i}"):
-                if pts >= r['prix']:
-                    st.session_state.classement[shopper] -= r['prix']
-                    st.session_state.achats_en_attente.append({"user": shopper, "item": r['item']})
-                    st.success("Demande envoyée !")
-                else: st.error("Pas assez de points !")
-
-# 4. MISSIONS
-else:
-    all_users = st.session_state.config["parents"] + st.session_state.config["ados"] + st.session_state.config["enfants"]
-    current_user = st.selectbox("Qui es-tu ?", all_users)
-    is_parent = current_user in st.session_state.config["parents"]
-    
-    if is_parent and not st.session_state.parent_authenticated:
-        p = st.text_input("PIN Parent requis :", type="password")
-        if p == PIN_PARENT:
+# --- 3. ESPACE PARENTS ---
+elif mode == "⚙️ Espace Parents":
+    if not st.session_state.parent_authenticated:
+        pin = st.text_input("Code Parent :", type="password")
+        if pin == PIN_PARENT:
             st.session_state.parent_authenticated = True
             st.rerun()
         st.stop()
+    
+    st.title("🛡️ Validation")
+    for idx, d in enumerate(st.session_state.attente_validation):
+        if st.button(f"Confirmer : {d['task']} par {d['user']} (+{d['pts']} pts)", key=f"v_{idx}"):
+            st.session_state.points_foyer += d['pts']
+            st.session_state.classement[d['user']] = st.session_state.classement.get(d['user'], 0) + d['pts']
+            st.session_state.attente_validation.pop(idx)
+            update_and_save()
 
-    tasks = [
-        # CUISINE
-        {"n": "🍳 Chef Étoilé", "p": 20, "f": "1x/j", "c": "Cuisine", "r": ["Parent"], "d": "Préparer un bon repas."},
-        {"n": "🍽️ Maître du Couvert", "p": 10, "f": "Repas", "c": "Cuisine", "r": ["Enfant"], "d": "Mettre la table."},
-        {"n": "🧼 Ranger l'assiette", "p": 10, "f": "Repas", "c": "Cuisine", "r": ["Enfant"], "d": "Débarrasser la table."},
-        {"n": "🍽️ Plongeur d'élite", "p": 15, "f": "Besoin", "c": "Cuisine", "r": ["Parent", "Ado"], "d": "Vaisselle ou lave-vaisselle."},
-        {"n": "⚡ Micro-Onde Brillant", "p": 15, "f": "1 sem/2", "c": "Cuisine", "r": ["Parent"], "d": "Laver l'intérieur."},
-        {"n": "🧊 Frigo comme Neuf", "p": 20, "f": "1x/mois", "c": "Cuisine", "r": ["Parent"], "d": "Nettoyer l'intérieur."},
-        {"n": "🔥 Mission Pyrolyse", "p": 50, "f": "1x/mois", "c": "Cuisine", "r": ["Parent"], "d": "Laver le four."},
-        # MÉNAGE
-        {"n": "🌀 Tornade Aspirateur", "p": 15, "f": "2x/sem", "c": "Ménage", "r": ["Parent", "Ado"], "d": "Aspirateur tout le bas."},
-        {"n": "✨ Miroir d'Eau", "p": 20, "f": "1x/sem", "c": "Ménage", "r": ["Parent", "Ado"], "d": "Serpillière en bas."},
-        {"n": "🌬️ Chasse à la Poussière", "p": 10, "f": "1 sem/2", "c": "Ménage", "r": ["Parent"], "d": "Poussières en bas."},
-        {"n": "🏰 Grand Nettoyage", "p": 40, "f": "1 sem/2", "c": "Ménage", "r": ["Parent"], "d": "Haut : Aspi+Serpi+Poussière+SdB."},
-        {"n": "🧸 Magicien du Salon", "p": 15, "f": "1x/j", "c": "Ménage", "r": ["Enfant"], "d": "Ramasser tous les jouets."},
-        {"n": "🚀 Mission Décollage", "p": 10, "f": "1x/j", "c": "Ménage", "r": ["Enfant"], "d": "Faire son lit et ranger son pyjama."},
-        {"n": "🏰 Gardien de la Chambre", "p": 25, "f": "1x/sem", "c": "Ménage", "r": ["Enfant"], "d": "Ranger sa chambre à fond."},
-        {"n": "🧺 Expert du Linge", "p": 15, "f": "Besoin", "c": "Ménage", "r": ["Parent", "Ado"], "d": "Plier le linge propre."},
-        {"n": "👟 Gardien du Hall", "p": 5, "f": "1x/j", "c": "Ménage", "r": ["Parent", "Ado", "Enfant"], "d": "Ranger les chaussures."},
-        # HYGIÈNE & DÉCHETS
-        {"n": "🦷 Sourire de Star", "p": 5, "f": "2x/j", "c": "Hygiène", "r": ["Enfant"], "d": "Brossage de dents complet."},
-        {"n": "🚿 Éclat Sanitaire", "p": 30, "f": "1x/sem", "c": "Hygiène", "r": ["Parent"], "d": "Laver les WC."},
-        {"n": "🗑️ Alerte Déchets", "p": 20, "f": "Lun/Mer", "c": "Déchets", "r": ["Parent", "Ado"], "d": "Sortir les poubelles extérieures."},
-        {"n": "📦 Lutin du Recyclage", "p": 10, "f": "Besoin", "c": "Déchets", "r": ["Parent", "Ado", "Enfant"], "d": "Vider les poubelles intérieures."},
-        # EXTÉRIEUR
-        {"n": "🚜 Maître de la Jungle", "p": 40, "f": "1 sem/2", "c": "Extérieur", "r": ["Parent", "Ado"], "d": "Tondre la pelouse."},
-        {"n": "🏎️ Car Wash Privé", "p": 40, "f": "1x/mois", "c": "Extérieur", "r": ["Parent", "Ado"], "d": "Laver l'extérieur de la voiture."},
-        {"n": "💎 Vue Cristalline", "p": 50, "f": "2 mois", "c": "Extérieur", "r": ["Parent"], "d": "Laver toutes les fenêtres."}
-    ]
-
-    pending = [d['task'] for d in st.session_state.attente_validation if d['user'] == current_user]
-    role = "Parent" if is_parent else "Ado" if current_user in st.session_state.config["ados"] else "Enfant"
-
-    for cat in ["Cuisine", "Ménage", "Hygiène", "Déchets", "Extérieur"]:
-        cat_t = [t for t in tasks if t["c"] == cat and role in t["r"]]
-        if cat_t:
-            st.markdown(f"<div class='category-header'>{cat}</div>", unsafe_allow_html=True)
-            for t in cat_t:
-                col_i, col_b = st.columns([5, 1.5])
-                with col_i: 
-                    st.markdown(f"""
-                        <div class='mission-card'>
-                            <span class='pts-badge'>+{t['p']} pts</span>
-                            <span class='freq-badge'>🗓️ {t['f']}</span>
-                            <b>{t['n']}</b><br>
-                            <span class='desc-text'>📝 {t['d']}</span>
-                        </div>""", unsafe_allow_html=True)
-                with col_b:
-                    st.write("")
-                    if t['n'] in pending: st.button("⌛ Attente", key=f"p_{t['n']}_{current_user}", disabled=True)
-                    else:
-                        label = "Valider ✅" if is_parent else "Fini ! 🚀"
-                        if st.button(label, key=f"f_{t['n']}_{current_user}"):
-                            if is_parent:
-                                st.session_state.points_foyer += t['p']
-                                st.session_state.classement[current_user] = st.session_state.classement.get(current_user, 0) + t['p']
-                            else: st.session_state.attente_validation.append({"user": current_user, "task": t['n'], "pts": t['p']})
-                            st.rerun()
+# --- 4. BOUTIQUE ---
+else:
+    st.title("🎁 Boutique")
+    st.write("Bientôt disponible...")
