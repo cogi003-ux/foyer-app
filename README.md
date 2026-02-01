@@ -1,16 +1,15 @@
-# 🚲 Opa's Bicycle
+# ✨ Foyer Magique
 
-Application web moderne pour suivre vos trajets à vélo avec un design glassmorphism élégant. Accessible sur smartphone et ordinateur.
+Application familiale moderne pour organiser les tâches ménagères et partager des messages dans un foyer. Design glassmorphism chaleureux avec une palette de couleurs ambre, blanc cassé et bois.
 
 ## ✨ Fonctionnalités
 
-- 📝 Enregistrement de trajets avec détails complets (date, lieux, météo, distance, notes)
-- 📊 Statistiques en temps réel (semaine, mois, année, total)
-- 🌍 Suivi de progression vers un "voyage autour du monde" avec étapes prédéfinies
-- 📜 Historique des trajets avec possibilité de suppression
-- 📧 Partage rapide par email
-- 🎨 Design moderne glassmorphism (effet de verre)
-- 📱 Interface responsive (mobile et desktop)
+- 📋 **Tableau des Tâches** : Gestion des tâches ménagères avec nom, icône, responsable et statut (À faire / En cours / Terminé)
+- 💌 **Mur de Messages** : Partagez des mots doux et des rappels avec un style post-it
+- 📊 **Tableau de bord** : Vue d'ensemble des tâches et messages
+- 🎨 **Design chaleureux** : Palette de couleurs ambre, blanc cassé et bois avec effet glassmorphism
+- 📱 **Interface responsive** : Accessible sur smartphone et ordinateur
+- 🔄 **Onglets intuitifs** : Navigation claire entre Tableau de bord, Tâches et Messages
 
 ## 🚀 Installation
 
@@ -19,12 +18,21 @@ Application web moderne pour suivre vos trajets à vélo avec un design glassmor
 pip install -r requirements.txt
 ```
 
-2. Lancer l'application :
+2. Configurer Supabase (optionnel mais recommandé) :
+   - Créer un projet sur [Supabase](https://supabase.com)
+   - Exécuter le script SQL dans `supabase_setup.sql` dans l'éditeur SQL de Supabase
+   - Configurer les variables d'environnement :
+     ```bash
+     export SUPABASE_URL="votre_url_supabase"
+     export SUPABASE_KEY="votre_clé_supabase"
+     ```
+
+3. Lancer l'application :
 ```bash
 python app.py
 ```
 
-3. Ouvrir dans le navigateur :
+4. Ouvrir dans le navigateur :
 ```
 http://localhost:5001
 ```
@@ -46,30 +54,33 @@ python app.py
 
 3. Sur votre smartphone, ouvrir :
 ```
-http://VOTRE_IP:5000
+http://VOTRE_IP:5001
 ```
 
 ## 🎨 Design
 
-L'application utilise un design **glassmorphism** moderne avec :
+L'application utilise un design **glassmorphism chaleureux** avec :
+- Palette de couleurs : ambre, blanc cassé et bois
 - Effets de transparence et flou (backdrop-filter)
 - Animations fluides
-- Dégradés de couleurs dynamiques
+- Dégradés de couleurs chaleureux
 - Interface responsive adaptée aux petits écrans
+- Icônes Lucide pour une meilleure lisibilité
 
 ## 📂 Structure du projet
 
 ```
-Opa'sBicycle/
+FoyerApp2.0/
 ├── app.py                 # Backend Flask
-├── journal_velo.csv       # Base de données (CSV)
+├── database.py            # Gestion Supabase
 ├── templates/
-│   └── index.html        # Interface HTML
+│   └── index.html        # Interface HTML avec onglets
 ├── static/
 │   ├── css/
-│   │   └── style.css     # Styles glassmorphism
+│   │   └── style.css     # Styles glassmorphism chaleureux
 │   └── js/
 │       └── app.js        # Logique JavaScript
+├── supabase_setup.sql    # Script SQL pour créer les tables
 ├── requirements.txt       # Dépendances Python
 └── README.md             # Documentation
 ```
@@ -78,15 +89,27 @@ Opa'sBicycle/
 
 - **Backend** : Flask (Python)
 - **Frontend** : HTML5, CSS3 (glassmorphism), JavaScript (ES6+)
-- **Base de données** : Supabase (PostgreSQL) avec fallback CSV
-- **Météo** : API wttr.in
+- **Base de données** : Supabase (PostgreSQL)
+- **Icônes** : Lucide Icons
+- **Format** : Heure en format 24h, chiffres au format belge
 
-## 📝 Notes
+## 📝 Tables Supabase
 
-- **Stockage des données** : L'application utilise Supabase (PostgreSQL) pour un stockage persistant. Si Supabase n'est pas configuré, elle utilise `journal_velo.csv` en fallback.
-- **Configuration Supabase** : Voir `SUPABASE_SETUP.md` pour les instructions détaillées.
-- La météo est récupérée automatiquement pour les lieux de départ et d'arrivée
-- L'application fonctionne hors ligne (sauf pour la météo)
+L'application utilise deux tables :
+
+1. **taches** : Stocke les tâches ménagères
+   - id (SERIAL PRIMARY KEY)
+   - nom (VARCHAR)
+   - icone (VARCHAR)
+   - responsable (VARCHAR)
+   - statut (VARCHAR : 'a_faire', 'en_cours', 'termine')
+   - created_at (TIMESTAMP)
+
+2. **messages** : Stocke les messages du mur
+   - id (SERIAL PRIMARY KEY)
+   - auteur (VARCHAR)
+   - texte (TEXT)
+   - created_at (TIMESTAMP)
 
 ## 🌐 Déploiement
 
@@ -103,4 +126,4 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 
 ## 📄 Licence
 
-Projet personnel - Opa's Bicycle
+Projet personnel - Foyer Magique

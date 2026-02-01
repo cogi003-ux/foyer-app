@@ -4,8 +4,20 @@ Module pour gérer la connexion à Supabase
 from supabase import create_client, Client
 import os
 from typing import List, Dict, Optional
+from datetime import datetime
+from dotenv import load_dotenv
 
-TABLE_NAME = 'rides'
+# Charger les variables d'environnement depuis .env
+load_dotenv()
+
+TABLE_TACHES = 'taches'
+TABLE_MESSAGES = 'messages'
+TABLE_CONFIG_FAMILLE = 'config_famille'
+TABLE_TACHES_COMPLETEES = 'taches_completees'
+TABLE_ATTENTE_VALIDATION = 'attente_validation'
+TABLE_CLASSEMENT = 'classement'
+TABLE_RECOMPENSES_PERSONNALISEES = 'recompenses_personnalisees'
+TABLE_RECOMPENSES_ACHETEES = 'recompenses_achetees'
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 def log_debug(message: str):
@@ -25,7 +37,6 @@ def get_supabase_client() -> Optional[Client]:
     supabase_url = os.getenv('SUPABASE_URL')
     supabase_key = os.getenv('SUPABASE_KEY')
     
-    # Logs détaillés pour débogage (uniquement si DEBUG activé)
     log_debug("Vérification variables d'environnement")
     log_debug(f"SUPABASE_URL présent: {bool(supabase_url)}")
     if supabase_url and DEBUG:
@@ -53,116 +64,58 @@ def get_supabase_client() -> Optional[Client]:
             traceback.print_exc()
         return None
 
-def create_table_if_not_exists():
+def ensure_table_exists(table_name: str, table_sql: str) -> bool:
     """
-    Crée la table 'rides' dans Supabase si elle n'existe pas
-    Utilise l'API REST de Supabase pour exécuter du SQL
+    S'assure que la table existe, sinon affiche les instructions SQL
     """
     client = get_supabase_client()
     if not client:
         return False
     
     try:
-        # Vérifier si la table existe en essayant de la lire
-        # Si elle n'existe pas, on la crée
-        try:
-            client.table(TABLE_NAME).select('id').limit(1).execute()
-            # La table existe déjà
-            return True
-        except Exception:
-            # La table n'existe pas, on la crée
-            # Note: Supabase Python client ne supporte pas directement l'exécution SQL
-            # On utilise une approche alternative : essayer d'insérer une ligne de test
-            # Si ça échoue, on suppose que la table n'existe pas
-            # Dans ce cas, l'utilisateur devra créer la table manuellement via le SQL Editor
-            # OU on peut utiliser l'API REST directement
-            
-            # Pour l'instant, on retourne True et on laisse l'utilisateur créer la table
-            # via le SQL Editor ou on utilise une migration automatique
-            print(f"⚠️  La table '{TABLE_NAME}' n'existe pas encore.")
-            print(f"   Veuillez exécuter le SQL suivant dans Supabase SQL Editor:")
-            print(f"   CREATE TABLE IF NOT EXISTS {TABLE_NAME} (")
-            print(f"       id SERIAL PRIMARY KEY,")
-            print(f"       date VARCHAR(10) NOT NULL,")
-            print(f"       start VARCHAR(255) NOT NULL,")
-            print(f"       etape VARCHAR(255),")
-            print(f"       ziel VARCHAR(255) NOT NULL,")
-            print(f"       wetter VARCHAR(255),")
-            print(f"       km DECIMAL(10, 1) NOT NULL,")
-            print(f"       bemerkungen TEXT,")
-            print(f"       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()")
-            print(f"   );")
-            return False
-    except Exception as e:
-        print(f"Erreur lors de la vérification/création de la table: {e}")
-        return False
-
-def ensure_table_exists():
-    """
-    S'assure que la table existe, sinon tente de la créer via une requête SQL directe
-    """
-    client = get_supabase_client()
-    if not client:
-        return False
-    
-    # Utiliser l'API REST pour exécuter du SQL
-    # Note: Cela nécessite la clé service_role, pas la clé anon
-    # Pour une solution plus simple, on vérifie juste si on peut lire la table
-    try:
-        client.table(TABLE_NAME).select('id').limit(1).execute()
+        client.table(table_name).select('id').limit(1).execute()
         return True
     except Exception as e:
-        # Si l'erreur indique que la table n'existe pas, on affiche les instructions
         error_msg = str(e).lower()
         if 'relation' in error_msg and 'does not exist' in error_msg:
-            print(f"\n⚠️  ATTENTION: La table '{TABLE_NAME}' n'existe pas dans Supabase!")
+            print(f"\n⚠️  ATTENTION: La table '{table_name}' n'existe pas dans Supabase!")
             print(f"   Veuillez créer la table en exécutant ce SQL dans Supabase SQL Editor:\n")
-            print(f"   CREATE TABLE {TABLE_NAME} (")
-            print(f"       id SERIAL PRIMARY KEY,")
-            print(f"       date VARCHAR(10) NOT NULL,")
-            print(f"       start VARCHAR(255) NOT NULL,")
-            print(f"       etape VARCHAR(255),")
-            print(f"       ziel VARCHAR(255) NOT NULL,")
-            print(f"       wetter VARCHAR(255),")
-            print(f"       km DECIMAL(10, 1) NOT NULL,")
-            print(f"       bemerkungen TEXT,")
-            print(f"       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()")
-            print(f"   );")
+            print(table_sql)
             print(f"\n   Ou utilisez le fichier supabase_setup.sql\n")
         return False
 
-def get_all_tours() -> List[Dict]:
-    """Récupère tous les tours depuis Supabase"""
+# ========== FONCTIONS POUR LES TÂCHES ==========
+
+def get_all_taches() -> List[Dict]:
+    """Récupère toutes les tâches depuis Supabase"""
     try:
         client = get_supabase_client()
         if not client:
             log_debug("Client Supabase non disponible")
             return []
         
-        # Ne pas bloquer si la table n'existe pas encore
         try:
-            response = client.table(TABLE_NAME).select('*').order('id', desc=True).execute()
+            response = client.table(TABLE_TACHES).select('*').order('id', desc=True).execute()
             return response.data if response.data else []
         except Exception as e:
             error_msg = str(e).lower()
-            # Si la table n'existe pas, retourner une liste vide plutôt que de planter
             if 'relation' in error_msg and 'does not exist' in error_msg:
-                log_debug(f"Table '{TABLE_NAME}' n'existe pas encore")
+                log_debug(f"Table '{TABLE_TACHES}' n'existe pas encore")
                 return []
             else:
-                log_error(f"Erreur lors de la récupération des tours: {e}")
+                log_error(f"Erreur lors de la récupération des tâches: {e}")
                 return []
     except Exception as e:
-        log_error(f"Exception dans get_all_tours: {e}")
+        log_error(f"Exception dans get_all_taches: {e}")
         return []
 
-def add_tour(tour_data: Dict) -> tuple[bool, str]:
+def add_tache(tache_data: Dict) -> tuple[bool, str]:
     """
-    Ajoute un nouveau tour dans Supabase
+    Ajoute une nouvelle tâche dans Supabase
     Retourne (success: bool, message: str)
     """
-    log_debug("===== DÉBUT add_tour =====")
-    log_debug(f"Données reçues: {tour_data}")
+    log_debug("===== DÉBUT add_tache =====")
+    log_debug(f"Données reçues: {tache_data}")
     
     client = get_supabase_client()
     if not client:
@@ -171,87 +124,88 @@ def add_tour(tour_data: Dict) -> tuple[bool, str]:
         return False, error_msg
     
     # Vérifier que la table existe
-    log_debug(f"Vérification de l'existence de la table '{TABLE_NAME}'...")
-    if not ensure_table_exists():
-        error_msg = f"La table '{TABLE_NAME}' n'existe pas dans Supabase. Veuillez l'exécuter dans SQL Editor."
+    table_sql = f"""
+    CREATE TABLE {TABLE_TACHES} (
+        id SERIAL PRIMARY KEY,
+        nom VARCHAR(255) NOT NULL,
+        icone VARCHAR(50) NOT NULL DEFAULT 'sparkles',
+        responsable VARCHAR(255),
+        responsables TEXT[] DEFAULT ARRAY[]::TEXT[],
+        type VARCHAR(20) NOT NULL DEFAULT 'quotidienne' CHECK (type IN ('quotidienne', 'hebdomadaire', 'ponctuelle')),
+        points INTEGER NOT NULL DEFAULT 10,
+        statut VARCHAR(20) NOT NULL CHECK (statut IN ('a_faire', 'en_cours', 'en_attente', 'termine')),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+    """
+    
+    log_debug(f"Vérification de l'existence de la table '{TABLE_TACHES}'...")
+    if not ensure_table_exists(TABLE_TACHES, table_sql):
+        error_msg = f"La table '{TABLE_TACHES}' n'existe pas dans Supabase. Veuillez l'exécuter dans SQL Editor."
         log_error(error_msg)
         return False, error_msg
-    log_debug(f"Table '{TABLE_NAME}' existe")
+    log_debug(f"Table '{TABLE_TACHES}' existe")
     
     try:
-        # Préparer les données pour Supabase - ALIGNEMENT EXACT avec les colonnes de la table
-        # Colonnes Supabase: date, start, etape, ziel, wetter, km, bemerkungen (toutes en minuscules)
-        log_debug("Préparation des données pour Supabase...")
+        # Gérer les responsables (peut être une liste ou une chaîne)
+        responsables_list = []
+        if 'responsables' in tache_data and tache_data['responsables']:
+            # Si c'est une liste
+            if isinstance(tache_data['responsables'], list):
+                responsables_list = [str(r).strip() for r in tache_data['responsables'] if r and str(r).strip()]
+            else:
+                responsables_list = [str(tache_data['responsables']).strip()]
+        elif 'responsable' in tache_data and tache_data['responsable']:
+            # Compatibilité avec l'ancien format
+            responsables_list = [str(tache_data['responsable']).strip()]
         
-        # Conversion et validation des types de données SQL
-        date_str = str(tour_data.get('Date', '')).strip()
-        start_str = str(tour_data.get('Start', '')).strip()
-        ziel_str = str(tour_data.get('Ziel', '')).strip()
-        km_value = tour_data.get('Km', 0)
-        
-        # Convertir km en float (DECIMAL en SQL)
-        try:
-            km_float = float(km_value) if km_value else 0.0
-        except (ValueError, TypeError):
-            km_float = 0.0
-        
-        # Préparer les données avec les noms de colonnes EXACTS (minuscules)
+        # Préparer les données pour Supabase
         supabase_data = {
-            'date': date_str,  # VARCHAR(10) NOT NULL
-            'start': start_str,  # VARCHAR(255) NOT NULL
-            'ziel': ziel_str,  # VARCHAR(255) NOT NULL
-            'km': km_float,  # DECIMAL(10, 1) NOT NULL - converti en float
-            # Champs optionnels (peuvent être NULL)
-            'etape': None,
-            'wetter': None,
-            'bemerkungen': None
+            'nom': str(tache_data.get('nom', '')).strip(),
+            'icone': str(tache_data.get('icone', 'sparkles')).strip(),
+            'type': str(tache_data.get('type', 'quotidienne')).strip(),
+            'points': int(tache_data.get('points', 10)),
+            'statut': str(tache_data.get('statut', 'a_faire')).strip(),
+            'responsables': responsables_list
         }
         
-        # Gérer les champs optionnels
-        etape_val = tour_data.get('Etape', '')
-        if etape_val and etape_val != 'N/A' and str(etape_val).strip():
-            supabase_data['etape'] = str(etape_val).strip()
+        # Garder responsable pour compatibilité (premier de la liste)
+        if responsables_list:
+            supabase_data['responsable'] = responsables_list[0]
         
-        wetter_val = tour_data.get('Wetter', '')
-        if wetter_val and str(wetter_val).strip():
-            supabase_data['wetter'] = str(wetter_val).strip()
-        
-        bemerkungen_val = tour_data.get('Bemerkungen', '')
-        if bemerkungen_val and str(bemerkungen_val).strip():
-            supabase_data['bemerkungen'] = str(bemerkungen_val).strip()
-        
-        # Log des données préparées
-        log_debug("Données préparées pour Supabase (colonnes en minuscules):")
+        log_debug("Données préparées pour Supabase:")
         for key, value in supabase_data.items():
-            log_debug(f"  {key}: {repr(value)} (type: {type(value).__name__})")
+            log_debug(f"  {key}: {repr(value)}")
         
-        # Valider les champs requis (NOT NULL dans SQL)
-        if not supabase_data['date']:
-            error_msg = "La date est requise"
+        # Valider les champs requis
+        if not supabase_data['nom']:
+            error_msg = "Le nom de la tâche est requis"
             log_error(error_msg)
             return False, error_msg
-        if not supabase_data['start']:
-            error_msg = "Le lieu de départ est requis"
+        if not responsables_list:
+            error_msg = "Au moins un responsable est requis"
             log_error(error_msg)
             return False, error_msg
-        if not supabase_data['ziel']:
-            error_msg = "Le lieu d'arrivée est requis"
+        if supabase_data['statut'] not in ['a_faire', 'en_cours', 'en_attente', 'termine']:
+            error_msg = "Le statut doit être 'a_faire', 'en_cours', 'en_attente' ou 'termine'"
+            log_error(error_msg)
+            return False, error_msg
+        
+        if supabase_data['type'] not in ['quotidienne', 'hebdomadaire', 'ponctuelle']:
+            error_msg = "Le type doit être 'quotidienne', 'hebdomadaire' ou 'ponctuelle'"
             log_error(error_msg)
             return False, error_msg
         
         # Insérer dans Supabase
-        log_debug(f"Tentative d'insertion dans la table '{TABLE_NAME}'...")
-        log_debug(f"Données à insérer: {supabase_data}")
-        
-        response = client.table(TABLE_NAME).insert(supabase_data).execute()
+        log_debug(f"Tentative d'insertion dans la table '{TABLE_TACHES}'...")
+        response = client.table(TABLE_TACHES).insert(supabase_data).execute()
         
         log_debug("Réponse Supabase reçue")
         log_debug(f"Response.data: {response.data}")
         
         if response.data:
-            tour_id = response.data[0].get('id', 'N/A') if response.data else 'N/A'
-            log_debug(f"Tour enregistré avec succès. ID: {tour_id}")
-            return True, "Tour enregistré avec succès"
+            tache_id = response.data[0].get('id', 'N/A') if response.data else 'N/A'
+            log_debug(f"Tâche enregistrée avec succès. ID: {tache_id}")
+            return True, "Tâche enregistrée avec succès"
         else:
             error_msg = "Aucune donnée retournée par Supabase"
             log_error(error_msg)
@@ -260,41 +214,484 @@ def add_tour(tour_data: Dict) -> tuple[bool, str]:
     except Exception as e:
         error_msg = str(e)
         error_type = type(e).__name__
-        log_error("===== ERREUR LORS DE L'AJOUT DU TOUR =====")
+        log_error("===== ERREUR LORS DE L'AJOUT DE LA TÂCHE =====")
         log_error(f"Type d'erreur: {error_type}")
         log_error(f"Erreur Supabase: {e}")
-        print(f"Erreur Supabase: {e}")  # Log supplémentaire pour Render
         if DEBUG:
-            try:
-                log_error(f"Données qui ont causé l'erreur: {supabase_data}")
-            except:
-                log_error("Données non disponibles")
             import traceback
             log_error("Traceback complet:")
             traceback.print_exc()
         log_error("===========================================")
         
-        # Messages d'erreur plus explicites
         if 'relation' in error_msg.lower() and 'does not exist' in error_msg.lower():
-            return False, f"La table '{TABLE_NAME}' n'existe pas. Exécutez le SQL dans Supabase SQL Editor."
-        elif 'permission denied' in error_msg.lower() or 'unauthorized' in error_msg.lower() or '401' in error_msg:
+            return False, f"La table '{TABLE_TACHES}' n'existe pas. Exécutez le SQL dans Supabase SQL Editor."
+        elif 'permission denied' in error_msg.lower() or 'unauthorized' in error_msg.lower():
             return False, "Erreur d'authentification Supabase. Vérifiez SUPABASE_KEY."
-        elif 'null value' in error_msg.lower() or 'not null' in error_msg.lower():
-            return False, f"Champ requis manquant: {error_msg}"
-        elif 'column' in error_msg.lower() and 'does not exist' in error_msg.lower():
-            return False, f"Colonne inexistante dans la table: {error_msg}"
         else:
             return False, f"Erreur Supabase ({error_type}): {error_msg}"
 
-def delete_tour(tour_id: int) -> bool:
-    """Supprime un tour de Supabase par son ID"""
+def delete_tache(tache_id: int) -> bool:
+    """Supprime une tâche de Supabase par son ID"""
     client = get_supabase_client()
     if not client:
         return False
     
     try:
-        client.table(TABLE_NAME).delete().eq('id', tour_id).execute()
+        client.table(TABLE_TACHES).delete().eq('id', tache_id).execute()
         return True
     except Exception as e:
-        print(f"Erreur lors de la suppression du tour: {e}")
+        print(f"Erreur lors de la suppression de la tâche: {e}")
+        return False
+
+def update_tache_db(tache_id: int, update_data: Dict) -> bool:
+    """Met à jour une tâche dans Supabase"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    
+    try:
+        # Préparer les données de mise à jour
+        supabase_update = {}
+        
+        if 'statut' in update_data:
+            statut = str(update_data['statut']).strip()
+            if statut in ['a_faire', 'en_cours', 'en_attente', 'termine']:
+                supabase_update['statut'] = statut
+        
+        if 'type' in update_data:
+            type_val = str(update_data['type']).strip()
+            if type_val in ['quotidienne', 'hebdomadaire', 'ponctuelle']:
+                supabase_update['type'] = type_val
+        
+        if 'points' in update_data:
+            supabase_update['points'] = int(update_data['points'])
+        
+        if 'nom' in update_data:
+            supabase_update['nom'] = str(update_data['nom']).strip()
+        
+        if 'responsable' in update_data:
+            supabase_update['responsable'] = str(update_data['responsable']).strip()
+        
+        if 'responsables' in update_data:
+            # Gérer les responsables (peut être une liste ou une chaîne)
+            responsables_list = []
+            if isinstance(update_data['responsables'], list):
+                responsables_list = [str(r).strip() for r in update_data['responsables'] if r and str(r).strip()]
+            else:
+                responsables_list = [str(update_data['responsables']).strip()]
+            supabase_update['responsables'] = responsables_list
+        
+        if 'icone' in update_data:
+            supabase_update['icone'] = str(update_data['icone']).strip()
+        
+        if not supabase_update:
+            return False
+        
+        client.table(TABLE_TACHES).update(supabase_update).eq('id', tache_id).execute()
+        return True
+    except Exception as e:
+        print(f"Erreur lors de la mise à jour de la tâche: {e}")
+        return False
+
+# ========== FONCTIONS POUR LES MESSAGES ==========
+
+def get_all_messages() -> List[Dict]:
+    """Récupère tous les messages depuis Supabase"""
+    try:
+        client = get_supabase_client()
+        if not client:
+            log_debug("Client Supabase non disponible")
+            return []
+        
+        try:
+            response = client.table(TABLE_MESSAGES).select('*').order('id', desc=True).execute()
+            return response.data if response.data else []
+        except Exception as e:
+            error_msg = str(e).lower()
+            if 'relation' in error_msg and 'does not exist' in error_msg:
+                log_debug(f"Table '{TABLE_MESSAGES}' n'existe pas encore")
+                return []
+            else:
+                log_error(f"Erreur lors de la récupération des messages: {e}")
+                return []
+    except Exception as e:
+        log_error(f"Exception dans get_all_messages: {e}")
+        return []
+
+def add_message(message_data: Dict) -> tuple[bool, str]:
+    """
+    Ajoute un nouveau message dans Supabase
+    Retourne (success: bool, message: str)
+    """
+    log_debug("===== DÉBUT add_message =====")
+    log_debug(f"Données reçues: {message_data}")
+    
+    client = get_supabase_client()
+    if not client:
+        error_msg = "Supabase non configuré: SUPABASE_URL ou SUPABASE_KEY manquants"
+        log_error(error_msg)
+        return False, error_msg
+    
+    # Vérifier que la table existe
+    table_sql = f"""
+    CREATE TABLE {TABLE_MESSAGES} (
+        id SERIAL PRIMARY KEY,
+        auteur VARCHAR(255) NOT NULL,
+        texte TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+    """
+    
+    log_debug(f"Vérification de l'existence de la table '{TABLE_MESSAGES}'...")
+    if not ensure_table_exists(TABLE_MESSAGES, table_sql):
+        error_msg = f"La table '{TABLE_MESSAGES}' n'existe pas dans Supabase. Veuillez l'exécuter dans SQL Editor."
+        log_error(error_msg)
+        return False, error_msg
+    log_debug(f"Table '{TABLE_MESSAGES}' existe")
+    
+    try:
+        # Préparer les données pour Supabase
+        supabase_data = {
+            'auteur': str(message_data.get('auteur', '')).strip(),
+            'texte': str(message_data.get('texte', '')).strip()
+        }
+        
+        log_debug("Données préparées pour Supabase:")
+        for key, value in supabase_data.items():
+            log_debug(f"  {key}: {repr(value)}")
+        
+        # Valider les champs requis
+        if not supabase_data['auteur']:
+            error_msg = "L'auteur est requis"
+            log_error(error_msg)
+            return False, error_msg
+        if not supabase_data['texte']:
+            error_msg = "Le texte du message est requis"
+            log_error(error_msg)
+            return False, error_msg
+        
+        # Insérer dans Supabase
+        log_debug(f"Tentative d'insertion dans la table '{TABLE_MESSAGES}'...")
+        response = client.table(TABLE_MESSAGES).insert(supabase_data).execute()
+        
+        log_debug("Réponse Supabase reçue")
+        log_debug(f"Response.data: {response.data}")
+        
+        if response.data:
+            message_id = response.data[0].get('id', 'N/A') if response.data else 'N/A'
+            log_debug(f"Message enregistré avec succès. ID: {message_id}")
+            return True, "Message enregistré avec succès"
+        else:
+            error_msg = "Aucune donnée retournée par Supabase"
+            log_error(error_msg)
+            return False, error_msg
+            
+    except Exception as e:
+        error_msg = str(e)
+        error_type = type(e).__name__
+        log_error("===== ERREUR LORS DE L'AJOUT DU MESSAGE =====")
+        log_error(f"Type d'erreur: {error_type}")
+        log_error(f"Erreur Supabase: {e}")
+        if DEBUG:
+            import traceback
+            log_error("Traceback complet:")
+            traceback.print_exc()
+        log_error("===========================================")
+        
+        if 'relation' in error_msg.lower() and 'does not exist' in error_msg.lower():
+            return False, f"La table '{TABLE_MESSAGES}' n'existe pas. Exécutez le SQL dans Supabase SQL Editor."
+        elif 'permission denied' in error_msg.lower() or 'unauthorized' in error_msg.lower():
+            return False, "Erreur d'authentification Supabase. Vérifiez SUPABASE_KEY."
+        else:
+            return False, f"Erreur Supabase ({error_type}): {error_msg}"
+
+def delete_message(message_id: int) -> bool:
+    """Supprime un message de Supabase par son ID"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    
+    try:
+        client.table(TABLE_MESSAGES).delete().eq('id', message_id).execute()
+        return True
+    except Exception as e:
+        print(f"Erreur lors de la suppression du message: {e}")
+        return False
+
+# ========== FONCTIONS POUR LA CONFIGURATION FAMILLE ==========
+
+def get_config_famille() -> Dict:
+    """Récupère la configuration de la famille"""
+    client = get_supabase_client()
+    if not client:
+        return {
+            "parents": ["Papa", "Maman"],
+            "ados": [],
+            "enfants": ["Enfant 1", "Enfant 2"],
+            "points_foyer": 0
+        }
+    
+    try:
+        response = client.table(TABLE_CONFIG_FAMILLE).select('*').limit(1).execute()
+        if response.data and len(response.data) > 0:
+            config = response.data[0]
+            return {
+                "id": config.get('id'),
+                "parents": config.get('parents', []),
+                "ados": config.get('ados', []),
+                "enfants": config.get('enfants', []),
+                "points_foyer": config.get('points_foyer', 0),
+                "pin_parent_hash": config.get('pin_parent_hash')
+            }
+        else:
+            # Créer la config par défaut
+            default_config = {
+                "parents": ["Papa", "Maman"],
+                "ados": [],
+                "enfants": ["Enfant 1", "Enfant 2"],
+                "points_foyer": 0,
+                "pin_parent_hash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
+            }
+            client.table(TABLE_CONFIG_FAMILLE).insert(default_config).execute()
+            return default_config
+    except Exception as e:
+        log_error(f"Erreur lors de la récupération de la config: {e}")
+        return {
+            "parents": ["Papa", "Maman"],
+            "ados": [],
+            "enfants": ["Enfant 1", "Enfant 2"],
+            "points_foyer": 0
+        }
+
+def update_config_famille(config_data: Dict) -> bool:
+    """Met à jour la configuration de la famille"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    
+    try:
+        # Récupérer l'ID de la config existante
+        existing = client.table(TABLE_CONFIG_FAMILLE).select('id').limit(1).execute()
+        if existing.data and len(existing.data) > 0:
+            config_id = existing.data[0]['id']
+            client.table(TABLE_CONFIG_FAMILLE).update(config_data).eq('id', config_id).execute()
+        else:
+            client.table(TABLE_CONFIG_FAMILLE).insert(config_data).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur lors de la mise à jour de la config: {e}")
+        return False
+
+# ========== FONCTIONS POUR L'AUTHENTIFICATION PARENT ==========
+
+import hashlib
+
+def hash_password(password: str) -> str:
+    """Hash un mot de passe"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_parent_pin(input_pin: str) -> bool:
+    """Vérifie si le PIN parent est correct"""
+    config = get_config_famille()
+    stored_hash = config.get('pin_parent_hash', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4')
+    input_hash = hash_password(input_pin)
+    return input_hash == stored_hash
+
+# ========== FONCTIONS POUR LES TÂCHES COMPLÉTÉES ==========
+
+def add_tache_completee(task_data: Dict) -> bool:
+    """Ajoute une tâche complétée à l'historique"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    
+    try:
+        supabase_data = {
+            'task_id': task_data.get('task_id'),
+            'task_nom': str(task_data.get('task_nom', '')).strip(),
+            'user_name': str(task_data.get('user_name', '')).strip(),
+            'date_completion': str(task_data.get('date_completion', '')),
+            'points': int(task_data.get('points', 0)),
+            'validated': bool(task_data.get('validated', False))
+        }
+        client.table(TABLE_TACHES_COMPLETEES).insert(supabase_data).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur lors de l'ajout de la tâche complétée: {e}")
+        return False
+
+def get_taches_completees(user_name: str = None, date_start: str = None, date_end: str = None) -> List[Dict]:
+    """Récupère les tâches complétées avec filtres optionnels"""
+    client = get_supabase_client()
+    if not client:
+        return []
+    
+    try:
+        query = client.table(TABLE_TACHES_COMPLETEES).select('*')
+        
+        if user_name:
+            query = query.eq('user_name', user_name)
+        if date_start:
+            query = query.gte('date_completion', date_start)
+        if date_end:
+            query = query.lte('date_completion', date_end)
+        
+        response = query.order('date_completion', desc=True).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        log_error(f"Erreur lors de la récupération des tâches complétées: {e}")
+        return []
+
+# ========== FONCTIONS POUR L'ATTENTE DE VALIDATION ==========
+
+def add_attente_validation(validation_data: Dict) -> bool:
+    """Ajoute une tâche en attente de validation"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    
+    try:
+        supabase_data = {
+            'user_name': str(validation_data.get('user_name', '')).strip(),
+            'task_nom': str(validation_data.get('task_nom', '')).strip(),
+            'task_id': validation_data.get('task_id'),
+            'points': int(validation_data.get('points', 0)),
+            'date_completion': str(validation_data.get('date_completion', ''))
+        }
+        client.table(TABLE_ATTENTE_VALIDATION).insert(supabase_data).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur lors de l'ajout en attente: {e}")
+        return False
+
+def get_attente_validation(user_name: str = None) -> List[Dict]:
+    """Récupère les tâches en attente de validation"""
+    client = get_supabase_client()
+    if not client:
+        return []
+    
+    try:
+        query = client.table(TABLE_ATTENTE_VALIDATION).select('*')
+        if user_name:
+            query = query.eq('user_name', user_name)
+        response = query.order('created_at', desc=True).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        log_error(f"Erreur lors de la récupération de l'attente: {e}")
+        return []
+
+def delete_attente_validation(validation_id: int) -> bool:
+    """Supprime une validation en attente"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    
+    try:
+        client.table(TABLE_ATTENTE_VALIDATION).delete().eq('id', validation_id).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur lors de la suppression: {e}")
+        return False
+
+# ========== FONCTIONS POUR LE CLASSEMENT ==========
+
+def get_classement() -> List[Dict]:
+    """Récupère le classement des points"""
+    client = get_supabase_client()
+    if not client:
+        return []
+    
+    try:
+        response = client.table(TABLE_CLASSEMENT).select('*').order('points', desc=True).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        log_error(f"Erreur lors de la récupération du classement: {e}")
+        return []
+
+def update_classement(user_name: str, points: int) -> bool:
+    """Met à jour ou crée une entrée dans le classement"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    
+    try:
+        # Vérifier si l'utilisateur existe
+        existing = client.table(TABLE_CLASSEMENT).select('*').eq('user_name', user_name).execute()
+        if existing.data and len(existing.data) > 0:
+            # Mettre à jour
+            current_points = existing.data[0].get('points', 0)
+            client.table(TABLE_CLASSEMENT).update({'points': current_points + points}).eq('user_name', user_name).execute()
+        else:
+            # Créer
+            client.table(TABLE_CLASSEMENT).insert({'user_name': user_name, 'points': points}).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur lors de la mise à jour du classement: {e}")
+        return False
+
+# ========== FONCTIONS POUR LES RÉCOMPENSES ==========
+
+def get_recompenses_personnalisees() -> List[Dict]:
+    """Récupère les récompenses personnalisées"""
+    client = get_supabase_client()
+    if not client:
+        return []
+    
+    try:
+        response = client.table(TABLE_RECOMPENSES_PERSONNALISEES).select('*').order('id', desc=True).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        log_error(f"Erreur lors de la récupération des récompenses: {e}")
+        return []
+
+def add_recompense_personnalisee(recompense_data: Dict) -> bool:
+    """Ajoute une récompense personnalisée"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    
+    try:
+        supabase_data = {
+            'nom': str(recompense_data.get('nom', '')).strip(),
+            'emoji': str(recompense_data.get('emoji', '🎁')).strip(),
+            'description': str(recompense_data.get('description', '')).strip(),
+            'points': int(recompense_data.get('points', 0)),
+            'couleur_gradient': str(recompense_data.get('couleur_gradient', ''))
+        }
+        client.table(TABLE_RECOMPENSES_PERSONNALISEES).insert(supabase_data).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur lors de l'ajout de la récompense: {e}")
+        return False
+
+def get_recompenses_achetees() -> List[Dict]:
+    """Récupère les récompenses achetées"""
+    client = get_supabase_client()
+    if not client:
+        return []
+    
+    try:
+        response = client.table(TABLE_RECOMPENSES_ACHETEES).select('*').order('date_achat', desc=True).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        log_error(f"Erreur lors de la récupération des récompenses achetées: {e}")
+        return []
+
+def add_recompense_achetee(recompense_data: Dict) -> bool:
+    """Ajoute une récompense achetée"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    
+    try:
+        supabase_data = {
+            'recompense_id': recompense_data.get('recompense_id'),
+            'recompense_nom': str(recompense_data.get('recompense_nom', '')).strip(),
+            'points_utilises': int(recompense_data.get('points_utilises', 0)),
+            'date_achat': str(recompense_data.get('date_achat', ''))
+        }
+        client.table(TABLE_RECOMPENSES_ACHETEES).insert(supabase_data).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur lors de l'ajout de la récompense achetée: {e}")
         return False

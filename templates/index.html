@@ -1,10 +1,33 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚲 Opa's Bicycle</title>
+    <meta name="theme-color" content="#667eea">
+    <meta name="description" content="L'application familiale qui simplifie votre quotidien">
+    <title>✨ Foyer Magique</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}')
+                    .then((registration) => {
+                        console.log('Service Worker enregistré avec succès:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('Échec de l\'enregistrement du Service Worker:', error);
+                    });
+            });
+        }
+    </script>
 </head>
 <body>
     <div class="background-animation"></div>
@@ -12,137 +35,321 @@
     <div class="container">
         <!-- Header -->
         <header class="glass-card header-card">
-            <h1 class="title">🚲 Opa's Bicycle</h1>
-            <p class="subtitle">Mein Weltreise-Tracker</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                <div>
+                    <h1 class="title">✨ Foyer Magique</h1>
+                    <p class="subtitle">L'application familiale qui simplifie votre quotidien</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <!-- Sélecteur d'utilisateur -->
+                    <div class="user-selector">
+                        <label for="currentUser" style="color: var(--text-primary); font-weight: 600; margin-right: 10px;">Qui es-tu ?</label>
+                        <select id="currentUser" class="user-select">
+                            <option value="">-- Sélectionner --</option>
+                        </select>
+                    </div>
+                    <!-- Indicateur parent -->
+                    <div id="parentIndicator" style="display: none; padding: 8px 15px; background: rgba(76, 175, 80, 0.3); border-radius: 20px; color: #2e7d32; font-weight: 600;">
+                        <i data-lucide="shield-check"></i>
+                        <span>Parent</span>
+                    </div>
+                    <!-- Bouton authentification parent -->
+                    <button id="btnAuthParent" class="btn-secondary" style="padding: 10px 20px;">
+                        <i data-lucide="lock"></i>
+                        <span>Espace Parents</span>
+                    </button>
+                </div>
+            </div>
         </header>
 
-        <!-- Formulaire -->
-        <section class="glass-card form-card">
-            <h2>Neue Tour hinzufügen</h2>
-            <form id="tourForm" class="tour-form">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="date">Datum</label>
-                        <input type="date" id="date" name="date" required>
+        <!-- Navigation par onglets -->
+        <nav class="tabs-container">
+            <button class="tab-btn active" data-tab="dashboard">
+                <i data-lucide="layout-dashboard"></i>
+                <span>Tableau de bord</span>
+            </button>
+            <button class="tab-btn" data-tab="taches">
+                <i data-lucide="clipboard-list"></i>
+                <span>Tâches</span>
+            </button>
+            <button class="tab-btn" data-tab="messages">
+                <i data-lucide="message-square"></i>
+                <span>Messages</span>
+            </button>
+            <button class="tab-btn" data-tab="boutique">
+                <i data-lucide="gift"></i>
+                <span>Boutique</span>
+            </button>
+            <button class="tab-btn" data-tab="calendrier">
+                <i data-lucide="calendar"></i>
+                <span>Calendrier</span>
+            </button>
+            <button class="tab-btn" data-tab="classement">
+                <i data-lucide="trophy"></i>
+                <span>Classement</span>
+            </button>
+            <button class="tab-btn" data-tab="famille" id="tabFamille" style="display: none;">
+                <i data-lucide="users"></i>
+                <span>Famille</span>
+            </button>
+        </nav>
+
+        <!-- Onglet Tableau de bord -->
+        <section id="dashboard" class="tab-content active">
+            <div class="glass-card dashboard-card">
+                <h2>Tableau de bord</h2>
+                <div class="dashboard-stats">
+                    <div class="stat-box">
+                        <i data-lucide="check-circle-2" class="stat-icon"></i>
+                        <div class="stat-info">
+                            <div class="stat-value" id="tachesTerminees">0</div>
+                            <div class="stat-label">Tâches terminées</div>
+                        </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="depart">Abfahrtsort</label>
-                        <input type="text" id="depart" name="depart" value="Kettenis" required>
+                    <div class="stat-box">
+                        <i data-lucide="clock" class="stat-icon"></i>
+                        <div class="stat-info">
+                            <div class="stat-value" id="tachesEnCours">0</div>
+                            <div class="stat-label">En cours</div>
+                        </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="heure_depart">Abfahrtszeit</label>
-                        <input type="time" id="heure_depart" name="heure_depart" value="10:00" required>
+                    <div class="stat-box">
+                        <i data-lucide="list-todo" class="stat-icon"></i>
+                        <div class="stat-info">
+                            <div class="stat-value" id="tachesAFaire">0</div>
+                            <div class="stat-label">À faire</div>
+                        </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="etape">Zwischenstopp</label>
-                        <input type="text" id="etape" name="etape">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="heure_etape">Zeit Zwischenstopp</label>
-                        <input type="time" id="heure_etape" name="heure_etape" value="11:30">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="arrivee">Ankunftsort</label>
-                        <input type="text" id="arrivee" name="arrivee" value="Kettenis" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="heure_arrivee">Ankunftszeit</label>
-                        <input type="time" id="heure_arrivee" name="heure_arrivee" value="12:30" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="distance">Kilometer (km)</label>
-                        <input type="number" id="distance" name="distance" min="0" step="0.1" required>
+                    <div class="stat-box">
+                        <i data-lucide="message-square" class="stat-icon"></i>
+                        <div class="stat-info">
+                            <div class="stat-value" id="nbMessages">0</div>
+                            <div class="stat-label">Messages</div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- Onglet Tâches -->
+        <section id="taches" class="tab-content">
+            <!-- Message global d'attente de validation -->
+            <div class="waiting-msg waiting-msg-global" style="display: none;"></div>
+            
+            <!-- Formulaire d'ajout de tâche -->
+            <section class="glass-card form-card">
+                <h2>Ajouter une tâche</h2>
+                <form id="tacheForm" class="tache-form">
+                    <div class="form-grid">
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label>Ou réutiliser une tâche existante</label>
+                            <select id="tacheTemplate" class="form-control" onchange="loadTacheTemplate(this.value)" style="margin-bottom: 10px;">
+                                <option value="">-- Sélectionner une tâche à réutiliser --</option>
+                            </select>
+                            <small style="color: var(--text-secondary); font-size: 0.85rem;">Sélectionnez une tâche pour pré-remplir le formulaire</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="tache-nom">Nom de la tâche</label>
+                            <input type="text" id="tache-nom" name="nom" required placeholder="Ex: Faire la vaisselle">
+                        </div>
+                        <div class="form-group">
+                            <label for="tache-icone">Icône</label>
+                            <select id="tache-icone" name="icone" required>
+                                <option value="sparkles">✨ Sparkles</option>
+                                <option value="home">🏠 Home</option>
+                                <option value="utensils">🍽️ Utensils</option>
+                                <option value="shirt">👕 Shirt</option>
+                                <option value="broom">🧹 Broom</option>
+                                <option value="shopping-cart">🛒 Shopping</option>
+                                <option value="leaf">🍃 Leaf</option>
+                                <option value="wrench">🔧 Wrench</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label>Responsable(s)</label>
+                            <div id="responsablesCheckboxes" class="checkboxes-container">
+                                <!-- Les cases à cocher seront générées dynamiquement -->
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Chargement des membres...</p>
+                            </div>
+                        </div>
+                    <div class="form-group">
+                        <label for="tache-type">Type de tâche</label>
+                        <select id="tache-type" name="type" required>
+                            <option value="quotidienne">Quotidienne</option>
+                            <option value="hebdomadaire">Hebdomadaire</option>
+                            <option value="ponctuelle">Ponctuelle</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tache-points">Points</label>
+                        <input type="number" id="tache-points" name="points" min="1" value="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tache-statut">Statut</label>
+                        <select id="tache-statut" name="statut" required>
+                            <option value="a_faire">À faire</option>
+                            <option value="en_cours">En cours</option>
+                            <option value="en_attente">En attente de validation</option>
+                            <option value="termine">Terminé</option>
+                        </select>
+                    </div>
+                    </div>
+                    <button type="submit" class="btn-primary">
+                        <span>Ajouter la tâche</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Liste des tâches -->
+            <section class="glass-card taches-card">
+                <h2>Tableau des tâches</h2>
+                <div class="taches-list" id="tachesList">
+                    <!-- Les tâches seront ajoutées dynamiquement -->
+                </div>
+            </section>
+        </section>
+
+        <!-- Onglet Messages -->
+        <section id="messages" class="tab-content">
+            <!-- Formulaire d'ajout de message -->
+            <section class="glass-card form-card">
+                <h2>Laisser un message</h2>
+                <form id="messageForm" class="message-form">
+                    <div class="form-group">
+                        <label for="message-auteur">De qui ?</label>
+                        <input type="text" id="message-auteur" name="auteur" required placeholder="Votre nom">
+                    </div>
+                    <div class="form-group">
+                        <label for="message-texte">Message</label>
+                        <textarea id="message-texte" name="texte" rows="4" required placeholder="Écrivez votre message..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">
+                        <span>Publier le message</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Mur de messages -->
+            <section class="glass-card messages-card">
+                <h2>Mur de messages</h2>
+                <div class="messages-wall" id="messagesWall">
+                    <!-- Les messages seront ajoutés dynamiquement -->
+                </div>
+            </section>
+        </section>
+
+        <!-- Onglet Boutique -->
+        <section id="boutique" class="tab-content">
+            <div class="glass-card boutique-card">
+                <h2>Boutique de récompenses</h2>
+                <div class="points-total">
+                    <i data-lucide="coins"></i>
+                    <span>Points totaux : <strong id="totalPoints">0</strong></span>
+                </div>
+                <div class="rewards-grid" id="rewardsGrid">
+                    <!-- Les récompenses seront ajoutées dynamiquement -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Onglet Calendrier -->
+        <section id="calendrier" class="tab-content">
+            <div class="glass-card calendrier-card">
+                <h2>Calendrier des missions</h2>
+                <div class="calendrier-controls">
+                    <button class="btn-secondary" onclick="loadCalendrier('aujourdhui')">Aujourd'hui</button>
+                    <button class="btn-secondary" onclick="loadCalendrier('semaine')">Cette semaine</button>
+                    <button class="btn-secondary" onclick="loadCalendrier('mois')">Ce mois</button>
+                </div>
+                <div id="calendrierContent" class="calendrier-content">
+                    <!-- Le contenu du calendrier sera ajouté dynamiquement -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Onglet Classement -->
+        <section id="classement" class="tab-content">
+            <div class="glass-card classement-card">
+                <h2>🏆 Tableau d'Honneur</h2>
+                <div id="classementList" class="classement-list">
+                    <!-- Le classement sera ajouté dynamiquement -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Onglet Gestion Famille (Parents uniquement) -->
+        <section id="famille" class="tab-content">
+            <div class="glass-card famille-card">
+                <h2>👨‍👩‍👧‍👦 Gestion de la Famille</h2>
                 
-                <div class="form-group">
-                    <label for="notes">Bemerkungen</label>
-                    <textarea id="notes" name="notes" rows="3"></textarea>
+                <!-- Gestion des Parents -->
+                <div class="famille-section">
+                    <h3>👨‍👩 Parents</h3>
+                    <div id="parentsList" class="famille-list"></div>
+                    <button class="btn-primary" onclick="addMembre('parent')">
+                        <span>➕ Ajouter un parent</span>
+                    </button>
                 </div>
-                
-                <div id="meteoLoading" style="display: none; margin-bottom: 15px; text-align: center; color: white; font-weight: 600;">
-                    <span>🌤️ Météo wird abgerufen...</span>
+
+                <!-- Gestion des Ados -->
+                <div class="famille-section">
+                    <h3>🧑 Ados</h3>
+                    <div id="adosList" class="famille-list"></div>
+                    <button class="btn-primary" onclick="addMembre('ado')">
+                        <span>➕ Ajouter un ado</span>
+                    </button>
                 </div>
-                <button type="submit" class="btn-primary" id="submitBtn">
-                    <span>Tour speichern</span>
+
+                <!-- Gestion des Enfants -->
+                <div class="famille-section">
+                    <h3>👶 Enfants</h3>
+                    <div id="enfantsList" class="famille-list"></div>
+                    <button class="btn-primary" onclick="addMembre('enfant')">
+                        <span>➕ Ajouter un enfant</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Modal d'authentification parent -->
+    <div id="authModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔐 Authentification Parents</h2>
+                <button class="modal-close" onclick="closeAuthModal()">
+                    <i data-lucide="x"></i>
                 </button>
-            </form>
-        </section>
-
-        <!-- Statistiques -->
-        <section class="stats-section" id="statsSection" style="display: none;">
-            <div class="stats-grid">
-                <div class="glass-card stat-card">
-                    <div class="stat-icon">☀️</div>
-                    <div class="stat-value" id="statAujourdhui">0 km</div>
-                    <div class="stat-label">Heute</div>
-                </div>
-                <div class="glass-card stat-card">
-                    <div class="stat-icon">📅</div>
-                    <div class="stat-value" id="statSemaine">0 km</div>
-                    <div class="stat-label">Woche</div>
-                </div>
-                <div class="glass-card stat-card">
-                    <div class="stat-icon">📆</div>
-                    <div class="stat-value" id="statMois">0 km</div>
-                    <div class="stat-label">Monat</div>
-                </div>
-                <div class="glass-card stat-card">
-                    <div class="stat-icon">🗓️</div>
-                    <div class="stat-value" id="statAnnee">0 km</div>
-                    <div class="stat-label">Jahr</div>
-                </div>
-                <div class="glass-card stat-card">
-                    <div class="stat-icon">🌍</div>
-                    <div class="stat-value" id="statTotal">0 km</div>
-                    <div class="stat-label">Gesamt</div>
-                </div>
             </div>
-        </section>
-
-        <!-- Progression -->
-        <section class="glass-card progression-card" id="progressionSection" style="display: none;">
-            <h2>🌍 Mein Weltreise-Fortschritt</h2>
-            <div class="progression-content">
-                <div class="current-location">
-                    <p class="location-label">Opa ist jetzt in</p>
-                    <h3 class="location-name" id="villeActuelle">🏠 Kettenis</h3>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Cette section est réservée aux parents. Veuillez entrer le code d'accès.
+                </p>
+                <div class="form-group">
+                    <label for="pinParent">Code Parent</label>
+                    <input type="password" id="pinParent" placeholder="Entrez le code PIN" autocomplete="off">
                 </div>
-                <div class="next-location">
-                    <p>Nächste Etappe: <span id="prochaineVille">🇧🇪 Liège à 30,0 km de Kettenis</span></p>
-                    <p class="km-restants">Noch <span id="kmRestants">30</span> km</p>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn-primary" onclick="authenticateParent()" style="flex: 1;">
+                        <span>✅ Se connecter</span>
+                    </button>
+                    <button class="btn-secondary" onclick="closeAuthModal()" style="flex: 1;">
+                        <span>🔙 Annuler</span>
+                    </button>
                 </div>
-                <div class="progress-container">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                    <div class="progress-text" id="progressText">0%</div>
-                </div>
-                <a href="#" id="emailLink" class="btn-secondary">
-                    📧 Zusammenfassung senden
-                </a>
+                <div id="authError" style="display: none; color: #ef4444; margin-top: 15px; font-weight: 600;"></div>
             </div>
-        </section>
-
-        <!-- Historique -->
-        <section class="glass-card history-card" id="historySection" style="display: none;">
-            <h2>📜 Letzte Touren</h2>
-            <div class="tours-list" id="toursList">
-                <!-- Les tours seront ajoutés dynamiquement -->
-            </div>
-        </section>
+        </div>
     </div>
 
     <!-- Notification Toast -->
     <div id="toast" class="toast"></div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        // Initialiser les icônes Lucide
+        lucide.createIcons();
+    </script>
 </body>
 </html>
