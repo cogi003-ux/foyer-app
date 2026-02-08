@@ -1701,31 +1701,31 @@ body.theme-enfant .cosmic-bg {
         grid-template-columns: 1fr;
     }
 
-    /* Barre de navigation fixe en bas — icônes seules 28px, dorées, glow sur actif, space-around */
-    .tabs-container {
+    /* Barre de Navigation Magique — fond transparent flou, icônes 32px colorées, glow, animation clic */
+    .tabs-container.nav-magic {
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
         z-index: 100;
         margin: 0;
-        padding: 10px 0;
-        padding-bottom: max(10px, env(safe-area-inset-bottom));
-        background-color: rgba(0, 0, 0, 0.8);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-top: 1px solid rgba(255, 215, 0, 0.35);
+        padding: 12px 0;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        background-color: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border-top: 1px solid rgba(255, 215, 0, 0.25);
         border-radius: 20px 20px 0 0;
         display: flex;
         flex-wrap: nowrap;
         justify-content: space-around;
         align-items: center;
-        box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 -4px 28px rgba(0, 0, 0, 0.35);
     }
-    .tabs-container .tab-btn {
+    .tabs-container.nav-magic .tab-btn {
         flex: 0 0 auto;
-        min-height: 52px;
-        min-width: 44px;
+        min-height: 56px;
+        min-width: 48px;
         padding: 10px;
         display: flex;
         flex-direction: column;
@@ -1733,30 +1733,80 @@ body.theme-enfant .cosmic-bg {
         align-items: center;
         background: transparent;
         border: none;
-        border-radius: 12px;
+        border-radius: 14px;
         color: inherit;
         box-shadow: none;
+        transition: transform 0.15s ease;
     }
-    .tabs-container .tab-btn i {
-        width: 28px;
-        height: 28px;
-        min-width: 28px;
-        min-height: 28px;
-        color: rgba(255, 215, 0, 0.75);
+    .tabs-container.nav-magic .tab-btn:active {
+        transform: scale(1.2);
+    }
+    .tabs-container.nav-magic .tab-btn i {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        min-height: 32px;
         stroke-width: 2;
+        transition: filter 0.2s ease, color 0.2s ease;
     }
-    .tabs-container .tab-btn span {
+    .tabs-container.nav-magic .tab-btn span {
         display: none;
     }
-    .tabs-container .tab-btn.active {
-        background: rgba(255, 215, 0, 0.12);
-    }
-    .tabs-container .tab-btn.active i {
+    /* Tableau : maison magique — Doré */
+    .tabs-container.nav-magic .tab-btn[data-tab="dashboard"] i {
         color: #ffd700;
-        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.7)) drop-shadow(0 0 12px rgba(255, 215, 0, 0.4));
+        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
     }
-    .tabs-container .tab-btn:hover {
-        background: rgba(255, 255, 255, 0.06);
+    .tabs-container.nav-magic .tab-btn[data-tab="dashboard"].active i {
+        filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.95)) drop-shadow(0 0 16px rgba(255, 215, 0, 0.5));
+    }
+    /* Quêtes : parchemin — Bleu scintillant */
+    .tabs-container.nav-magic .tab-btn[data-tab="taches"] i {
+        color: #60a5fa;
+        filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.8));
+    }
+    .tabs-container.nav-magic .tab-btn[data-tab="taches"].active i {
+        color: #93c5fd;
+        filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.95)) drop-shadow(0 0 16px rgba(96, 165, 250, 0.5));
+    }
+    /* Messages : enveloppe volante — Violet */
+    .tabs-container.nav-magic .tab-btn[data-tab="messages"] i {
+        color: #c084fc;
+        filter: drop-shadow(0 0 8px rgba(192, 132, 252, 0.8));
+    }
+    .tabs-container.nav-magic .tab-btn[data-tab="messages"].active i {
+        color: #e9d5ff;
+        filter: drop-shadow(0 0 10px rgba(192, 132, 252, 0.95)) drop-shadow(0 0 16px rgba(192, 132, 252, 0.5));
+    }
+    /* Boutique : coffre au trésor — Vert émeraude */
+    .tabs-container.nav-magic .tab-btn[data-tab="boutique"] i {
+        color: #34d399;
+        filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.8));
+    }
+    .tabs-container.nav-magic .tab-btn[data-tab="boutique"].active i {
+        color: #6ee7b7;
+        filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.95)) drop-shadow(0 0 16px rgba(52, 211, 153, 0.5));
+    }
+    /* Calendrier : sablier — Ambre */
+    .tabs-container.nav-magic .tab-btn[data-tab="calendrier"] i {
+        color: #fbbf24;
+        filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
+    }
+    .tabs-container.nav-magic .tab-btn[data-tab="calendrier"].active i {
+        color: #fde047;
+        filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.95)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.5));
+    }
+    /* Classement : couronne — Rouge rubis */
+    .tabs-container.nav-magic .tab-btn[data-tab="classement"] i {
+        color: #f87171;
+        filter: drop-shadow(0 0 8px rgba(248, 113, 113, 0.8));
+    }
+    .tabs-container.nav-magic .tab-btn[data-tab="classement"].active i {
+        color: #fca5a5;
+        filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.95)) drop-shadow(0 0 16px rgba(248, 113, 113, 0.5));
+    }
+    .tabs-container.nav-magic .tab-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
     }
 
     .user-selector {
