@@ -441,22 +441,61 @@ function runPortalTransition(switchContentCallback) {
     }, PORTAL_DURATION_MS);
 }
 
-function initializeTabs() {
-    const tabButtons = document.querySelectorAll('.tab-btn');
+const PATH_TO_TAB = {
+    '/': 'dashboard',
+    '/quetes': 'taches',
+    '/messages': 'messages',
+    '/boutique': 'boutique',
+    '/calendrier': 'calendrier',
+    '/classement': 'classement'
+};
+const TAB_TO_PATH = {
+    dashboard: '/',
+    taches: '/quetes',
+    messages: '/messages',
+    boutique: '/boutique',
+    calendrier: '/calendrier',
+    classement: '/classement'
+};
 
-    tabButtons.forEach(button => {
-        button.addEventListener('click', async () => {
-            const targetTab = button.getAttribute('data-tab');
+function getTabFromPathname() {
+    const path = window.location.pathname.replace(/\/$/, '') || '/';
+    return PATH_TO_TAB[path] || 'dashboard';
+}
+
+function syncTabFromUrl() {
+    const targetTab = getTabFromPathname();
+    const targetContent = document.getElementById(targetTab);
+    const tabButtons = document.querySelectorAll('.tabs-container .tab-btn');
+    if (!targetContent) return;
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    tabButtons.forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-tab') === targetTab));
+    targetContent.classList.add('active');
+    lucide.createIcons();
+    updateData(targetTab);
+}
+
+function initializeTabs() {
+    syncTabFromUrl();
+
+    document.querySelectorAll('.tabs-container .tab-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            if (btn.getAttribute('aria-hidden') === 'true') return;
+            const targetTab = btn.getAttribute('data-tab');
             const currentActive = document.querySelector('.tab-content.active');
             const targetContent = document.getElementById(targetTab);
             if (!targetContent || currentActive === targetContent) return;
+
+            e.preventDefault();
+            const path = TAB_TO_PATH[targetTab];
+            if (path != null) history.pushState({ tab: targetTab }, '', path);
 
             await saveDraftMessageIfAny();
 
             runPortalTransition(() => {
                 currentActive.classList.remove('active');
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
+                document.querySelectorAll('.tabs-container .tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
                 targetContent.classList.add('active');
                 lucide.createIcons();
                 updateData(targetTab);
@@ -464,6 +503,8 @@ function initializeTabs() {
         });
     });
 }
+
+window.addEventListener('popstate', () => { syncTabFromUrl(); });
 
 // Charger la configuration famille
 async function loadConfigFamille() {

@@ -1701,128 +1701,92 @@ body.theme-enfant .cosmic-bg {
         grid-template-columns: 1fr;
     }
 
-    /* Barre de navigation magique — très colorée, représentative, halo par onglet */
+    /* Barre de navigation Foyer Magique — 6 onglets, icônes 32px, couleurs forcées !important */
     .tabs-container.nav-magic {
         position: fixed !important;
         bottom: 0 !important;
-        left: 0;
-        right: 0;
+        left: 0 !important;
+        right: 0 !important;
         z-index: 100;
-        margin: 0;
-        padding: 10px 0;
-        padding-bottom: max(10px, env(safe-area-inset-bottom));
-        background: linear-gradient(180deg, rgba(20, 10, 40, 0.92) 0%, rgba(0, 0, 0, 0.9) 100%) !important;
+        margin: 0 !important;
+        padding: 10px 0 !important;
+        padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+        background-color: rgba(0, 0, 0, 0.8) !important;
         backdrop-filter: blur(15px) !important;
         -webkit-backdrop-filter: blur(15px) !important;
-        border-top: 2px solid rgba(255, 215, 0, 0.35);
+        border-top: 1px solid rgba(255, 215, 0, 0.25);
         border-radius: 24px 24px 0 0;
-        box-shadow: 0 -8px 32px rgba(0,0,0,0.5), 0 -2px 0 rgba(255,215,0,0.2), 0 0 40px rgba(191,0,255,0.08);
-        display: flex;
+        display: flex !important;
         flex-wrap: nowrap;
         justify-content: space-around;
         align-items: center;
+        box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
     }
     .tabs-container.nav-magic .tab-btn {
-        flex: 1;
-        min-height: 56px;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        flex: 1 !important;
+        min-height: 52px;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
         text-align: center;
-        background: transparent;
-        border: none;
-        border-radius: 16px;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 12px;
+        box-shadow: none !important;
+        text-decoration: none !important;
         color: inherit;
-        box-shadow: none;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
-    .tabs-container.nav-magic .tab-btn:active {
-        transform: scale(1.08);
-    }
-    .tabs-container.nav-magic .tab-btn:not(#tabFamille) span {
-        display: none !important;
-        visibility: hidden !important;
-        font-size: 0 !important;
-        overflow: hidden !important;
-        position: absolute !important;
-        width: 0 !important;
-        height: 0 !important;
-    }
-    .tabs-container.nav-magic .tab-btn i {
-        width: 35px !important;
-        height: 35px !important;
-        min-width: 35px !important;
-        min-height: 35px !important;
-        font-size: 35px !important;
-        stroke-width: 2;
-        transition: filter 0.25s ease, transform 0.2s ease;
-    }
-    .tabs-container.nav-magic .tab-btn.active {
-        background: radial-gradient(circle at center, rgba(255,255,255,0.12) 0%, transparent 70%);
-        box-shadow: inset 0 0 20px rgba(255,255,255,0.08);
-    }
-    .tabs-container.nav-magic .tab-btn.active i {
-        animation: magic-glow 2.2s ease-in-out infinite;
-    }
-    @keyframes magic-glow {
-        0%, 100% { filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 16px currentColor); opacity: 1; }
-        50% { filter: drop-shadow(0 0 14px currentColor) drop-shadow(0 0 24px currentColor); opacity: 0.95; }
-    }
-    .tabs-container.nav-magic .tab-btn:hover i {
-        transform: scale(1.05);
-    }
-    /* Tableau — Or (maison magique) */
-    .tabs-container.nav-magic .tab-btn[data-tab="dashboard"] i {
-        color: #FFD700 !important;
-        filter: drop-shadow(0 0 8px #FFD700) drop-shadow(0 0 16px rgba(255,215,0,0.6)) !important;
-    }
-    .tabs-container.nav-magic .tab-btn[data-tab="dashboard"].active {
-        box-shadow: inset 0 0 24px rgba(255,215,0,0.2);
-    }
-    /* Quêtes — Bleu de givre (parchemin) */
-    .tabs-container.nav-magic .tab-btn[data-tab="taches"] i {
-        color: #00BFFF !important;
-        filter: drop-shadow(0 0 8px #00BFFF) drop-shadow(0 0 16px rgba(0,191,255,0.6)) !important;
-    }
-    .tabs-container.nav-magic .tab-btn[data-tab="taches"].active {
-        box-shadow: inset 0 0 24px rgba(0,191,255,0.2);
-    }
-    /* Messages — Violet mystique (enveloppe) */
-    .tabs-container.nav-magic .tab-btn[data-tab="messages"] i {
-        color: #BF00FF !important;
-        filter: drop-shadow(0 0 8px #BF00FF) drop-shadow(0 0 16px rgba(191,0,255,0.6)) !important;
-    }
-    .tabs-container.nav-magic .tab-btn[data-tab="messages"].active {
-        box-shadow: inset 0 0 24px rgba(191,0,255,0.2);
-    }
-    /* Boutique — Vert émeraude (coffre) */
-    .tabs-container.nav-magic .tab-btn[data-tab="boutique"] i {
-        color: #32CD32 !important;
-        filter: drop-shadow(0 0 8px #32CD32) drop-shadow(0 0 16px rgba(50,205,50,0.6)) !important;
-    }
-    .tabs-container.nav-magic .tab-btn[data-tab="boutique"].active {
-        box-shadow: inset 0 0 24px rgba(50,205,50,0.2);
-    }
-    /* Calendrier — Ambre (sablier) */
-    .tabs-container.nav-magic .tab-btn[data-tab="calendrier"] i {
-        color: #FF8C00 !important;
-        filter: drop-shadow(0 0 8px #FF8C00) drop-shadow(0 0 16px rgba(255,140,0,0.6)) !important;
-    }
-    .tabs-container.nav-magic .tab-btn[data-tab="calendrier"].active {
-        box-shadow: inset 0 0 24px rgba(255,140,0,0.2);
-    }
-    /* Classement — Rouge rubis (couronne) */
-    .tabs-container.nav-magic .tab-btn[data-tab="classement"] i {
-        color: #FF0000 !important;
-        filter: drop-shadow(0 0 8px #FF0000) drop-shadow(0 0 16px rgba(255,0,0,0.6)) !important;
-    }
-    .tabs-container.nav-magic .tab-btn[data-tab="classement"].active {
-        box-shadow: inset 0 0 24px rgba(255,0,0,0.2);
+        cursor: pointer;
+        transition: transform 0.2s ease, background 0.2s ease;
     }
     .tabs-container.nav-magic .tab-btn:hover {
-        background: radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, transparent 70%);
+        background: rgba(255, 255, 255, 0.06) !important;
+    }
+    .tabs-container.nav-magic .tab-btn:active {
+        transform: scale(1.05);
+    }
+    .tabs-container.nav-magic .tab-btn i {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        font-size: 32px !important;
+        stroke-width: 2;
+        pointer-events: none;
+    }
+    /* Accueil — Or #FFD700 */
+    .tabs-container.nav-magic .tab-btn[data-tab="dashboard"] i {
+        color: #FFD700 !important;
+        filter: drop-shadow(0 0 10px currentColor) !important;
+    }
+    /* Quêtes — Bleu givre #00BFFF */
+    .tabs-container.nav-magic .tab-btn[data-tab="taches"] i {
+        color: #00BFFF !important;
+        filter: drop-shadow(0 0 10px currentColor) !important;
+    }
+    /* Messages — Violet #BF00FF */
+    .tabs-container.nav-magic .tab-btn[data-tab="messages"] i {
+        color: #BF00FF !important;
+        filter: drop-shadow(0 0 10px currentColor) !important;
+    }
+    /* Boutique — Vert #32CD32 */
+    .tabs-container.nav-magic .tab-btn[data-tab="boutique"] i {
+        color: #32CD32 !important;
+        filter: drop-shadow(0 0 10px currentColor) !important;
+    }
+    /* Calendrier — Ambre #FF8C00 */
+    .tabs-container.nav-magic .tab-btn[data-tab="calendrier"] i {
+        color: #FF8C00 !important;
+        filter: drop-shadow(0 0 10px currentColor) !important;
+    }
+    /* Classement — Rouge #FF0000 */
+    .tabs-container.nav-magic .tab-btn[data-tab="classement"] i {
+        color: #FF0000 !important;
+        filter: drop-shadow(0 0 10px currentColor) !important;
+    }
+    .tabs-container.nav-magic .tab-btn.active i {
+        filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 14px currentColor) !important;
     }
 
     .user-selector {

@@ -53,6 +53,16 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/quetes')
+@app.route('/messages')
+@app.route('/boutique')
+@app.route('/calendrier')
+@app.route('/classement')
+def index_spa(path=None):
+    """Routes SPA : même page pour navigation par lien (Tableau, Quêtes, etc.)."""
+    return render_template('index.html')
+
+
 @app.route('/admin')
 @app.route('/parent')
 def admin_or_parent():

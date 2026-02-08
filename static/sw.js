@@ -1,5 +1,5 @@
 // Service Worker pour Foyer Magique
-const CACHE_NAME = 'foyer-magique-v1.3';
+const CACHE_NAME = 'foyer-magique-v1.4';
 const urlsToCache = [
   '/',
   '/static/css/style.css',
