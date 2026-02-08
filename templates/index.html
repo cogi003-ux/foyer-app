@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#2E0249">
     <meta name="description" content="L'application familiale qui simplifie votre quotidien">
     <title>✨ Foyer Magique</title>
     
@@ -11,8 +11,13 @@
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
     
+    <!-- Typo Game (Fredoka One + Nunito) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     
     <!-- Service Worker Registration -->
     <script>
@@ -30,8 +35,32 @@
     </script>
 </head>
 <body>
-    <div class="background-animation"></div>
-    
+    <canvas id="galaxy-bg" aria-hidden="true"></canvas>
+    <input type="file" id="capture-photo" style="display:none" capture="camera" accept="image/*">
+    <div id="cosmic-bg" class="cosmic-bg" aria-hidden="true">
+        <span class="shooting-star"></span>
+        <span class="shooting-star" style="animation-delay: -3s; left: 30%;"></span>
+        <span class="shooting-star" style="animation-delay: -6s; left: 70%;"></span>
+        <span class="cosmic-planet" style="top: 15%; left: 10%; width: 20px; height: 20px;"></span>
+        <span class="cosmic-planet" style="top: 60%; right: 15%; width: 12px; height: 12px; animation-duration: 25s;"></span>
+        <span class="cosmic-rocket">🚀</span>
+    </div>
+    <div id="floating-deco" class="floating-deco" aria-hidden="true">
+        <span class="floating-emoji" style="top: 15%; left: 10%;">⭐</span>
+        <span class="floating-emoji" style="top: 25%; right: 15%; animation-delay: -2s;">✨</span>
+        <span class="floating-emoji" style="top: 60%; left: 8%; animation-delay: -4s;">🌟</span>
+        <span class="floating-emoji" style="top: 70%; right: 10%; animation-delay: -1s;">💫</span>
+        <span class="floating-emoji" style="top: 40%; left: 85%; animation-delay: -3s;">⭐</span>
+        <span class="floating-star" style="top: 20%; left: 30%;"></span>
+        <span class="floating-star" style="top: 50%; right: 25%; animation-delay: -0.5s;"></span>
+        <span class="floating-star" style="top: 80%; left: 50%; animation-delay: -1.5s;"></span>
+    </div>
+    <!-- Bannière "Du nouveau" (affichée par le script de surveillance) -->
+    <div id="notificationBanner" class="notification-banner" aria-hidden="true">
+        <span class="notification-banner-text">✨ Du nouveau dans le Foyer !</span>
+        <button type="button" class="notification-banner-btn" id="notificationBannerRefresh">Rafraîchir</button>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <header class="glass-card header-card">
@@ -48,16 +77,11 @@
                             <option value="">-- Sélectionner --</option>
                         </select>
                     </div>
-                    <!-- Indicateur parent -->
+                    <!-- Indicateur parent (affiché quand authentifié) -->
                     <div id="parentIndicator" style="display: none; padding: 8px 15px; background: rgba(76, 175, 80, 0.3); border-radius: 20px; color: #2e7d32; font-weight: 600;">
                         <i data-lucide="shield-check"></i>
-                        <span>Parent</span>
+                        <span>Grand Mage</span>
                     </div>
-                    <!-- Bouton authentification parent -->
-                    <button id="btnAuthParent" class="btn-secondary" style="padding: 10px 20px;">
-                        <i data-lucide="lock"></i>
-                        <span>Espace Parents</span>
-                    </button>
                 </div>
             </div>
         </header>
@@ -69,8 +93,8 @@
                 <span>Tableau de bord</span>
             </button>
             <button class="tab-btn" data-tab="taches">
-                <i data-lucide="clipboard-list"></i>
-                <span>Tâches</span>
+                <i data-lucide="scroll-text"></i>
+                <span>Quêtes</span>
             </button>
             <button class="tab-btn" data-tab="messages">
                 <i data-lucide="message-square"></i>
@@ -93,6 +117,14 @@
                 <span>Famille</span>
             </button>
         </nav>
+
+        <!-- Barre de progression des quêtes du jour -->
+        <div id="questProgressBar" class="quest-progress-bar" aria-hidden="true">
+            <div class="quest-progress-track">
+                <div id="questProgressFill" class="quest-progress-fill" style="width: 0%;"></div>
+            </div>
+            <span id="questProgressLabel" class="quest-progress-label">Quêtes accomplies</span>
+        </div>
 
         <!-- Onglet Tableau de bord -->
         <section id="dashboard" class="tab-content active">
@@ -131,26 +163,26 @@
             </div>
         </section>
 
-        <!-- Onglet Tâches -->
+        <!-- Onglet Quêtes -->
         <section id="taches" class="tab-content">
             <!-- Message global d'attente de validation -->
             <div class="waiting-msg waiting-msg-global" style="display: none;"></div>
             
-            <!-- Formulaire d'ajout de tâche -->
-            <section class="glass-card form-card">
-                <h2>Ajouter une tâche</h2>
+            <!-- Formulaire de création de quête (visible uniquement après authentification parent) -->
+            <section id="questFormSection" class="glass-card form-card" style="display: none;">
+                <h2>Créer une nouvelle Quête</h2>
                 <form id="tacheForm" class="tache-form">
                     <div class="form-grid">
                         <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>Ou réutiliser une tâche existante</label>
+                            <label>Ou réutiliser une quête existante</label>
                             <select id="tacheTemplate" class="form-control" onchange="loadTacheTemplate(this.value)" style="margin-bottom: 10px;">
-                                <option value="">-- Sélectionner une tâche à réutiliser --</option>
+                                <option value="">-- Sélectionner une quête à réutiliser --</option>
                             </select>
-                            <small style="color: var(--text-secondary); font-size: 0.85rem;">Sélectionnez une tâche pour pré-remplir le formulaire</small>
+                            <small style="color: var(--text-secondary); font-size: 0.85rem;">Sélectionnez une quête pour pré-remplir le formulaire</small>
                         </div>
                         <div class="form-group">
-                            <label for="tache-nom">Nom de la tâche</label>
-                            <input type="text" id="tache-nom" name="nom" required placeholder="Ex: Faire la vaisselle">
+                            <label for="tache-nom">Nom de la quête</label>
+                            <input type="text" id="tache-nom" name="nom" required placeholder="Ex: La vaisselle enchantée">
                         </div>
                         <div class="form-group">
                             <label for="tache-icone">Icône</label>
@@ -166,14 +198,15 @@
                             </select>
                         </div>
                         <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>Responsable(s)</label>
+                            <label id="heroesLabel">Héros</label>
                             <div id="responsablesCheckboxes" class="checkboxes-container">
                                 <!-- Les cases à cocher seront générées dynamiquement -->
                                 <p style="color: var(--text-secondary); font-size: 0.9rem;">Chargement des membres...</p>
                             </div>
+                            <small id="heroesHint" class="heroes-hint" style="display: none;">Plusieurs = L'Équipe de Super-Héros</small>
                         </div>
                     <div class="form-group">
-                        <label for="tache-type">Type de tâche</label>
+                        <label for="tache-type">Type de quête</label>
                         <select id="tache-type" name="type" required>
                             <option value="quotidienne">Quotidienne</option>
                             <option value="hebdomadaire">Hebdomadaire</option>
@@ -195,16 +228,16 @@
                     </div>
                     </div>
                     <button type="submit" class="btn-primary">
-                        <span>Ajouter la tâche</span>
+                        <span>Créer la quête</span>
                     </button>
                 </form>
             </section>
 
-            <!-- Liste des tâches -->
+            <!-- Le Grimoire des Quêtes -->
             <section class="glass-card taches-card">
-                <h2>Tableau des tâches</h2>
+                <h2>Le Grimoire des Quêtes</h2>
                 <div class="taches-list" id="tachesList">
-                    <!-- Les tâches seront ajoutées dynamiquement -->
+                    <!-- Les quêtes seront ajoutées dynamiquement -->
                 </div>
             </section>
         </section>
@@ -216,12 +249,22 @@
                 <h2>Laisser un message</h2>
                 <form id="messageForm" class="message-form">
                     <div class="form-group">
-                        <label for="message-auteur">De qui ?</label>
-                        <input type="text" id="message-auteur" name="auteur" required placeholder="Votre nom">
+                        <label>À qui s'adresse ce message ?</label>
+                        <div id="destinatairesCheckboxes" class="checkboxes-container">
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">Chargement...</p>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="message-texte">Message</label>
                         <textarea id="message-texte" name="texte" rows="4" required placeholder="Écrivez votre message..."></textarea>
+                    </div>
+                    <div class="form-group message-photo-row">
+                        <label>Photo (optionnel)</label>
+                        <div class="message-photo-controls">
+                            <input type="file" id="message-photo-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
+                            <button type="button" class="btn-message-photo" id="messagePhotoBtn" title="Ajouter une photo">📷</button>
+                            <div id="message-photo-preview" class="message-photo-preview"></div>
+                        </div>
                     </div>
                     <button type="submit" class="btn-primary">
                         <span>Publier le message</span>
@@ -313,9 +356,9 @@
 
     </div>
 
-    <!-- Modal d'authentification parent -->
+    <!-- Modal d'authentification parent (Panneau de Quête style jeu) -->
     <div id="authModal" class="modal" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content game-panel">
             <div class="modal-header">
                 <h2>🔐 Authentification Parents</h2>
                 <button class="modal-close" onclick="closeAuthModal()">
@@ -339,6 +382,37 @@
                     </button>
                 </div>
                 <div id="authError" style="display: none; color: #ef4444; margin-top: 15px; font-weight: 600;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Choix du héros (tâches récurrentes) -->
+    <div id="heroChoiceModal" class="modal game-panel-modal" style="display: none;">
+        <div class="modal-content game-panel">
+            <div class="modal-header">
+                <h2>Qui s'en occupe ?</h2>
+                <button type="button" class="modal-close" onclick="closeHeroChoiceModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="heroChoiceList" class="hero-choice-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- #portal-overlay (Portal Wipe) injecté par JS au clic onglet -->
+
+    <!-- Modal lecture message agrandi (fond Galaxie, blur) -->
+    <div id="messageExpandModal" class="message-expand-modal" aria-hidden="true" style="display: none;">
+        <div class="message-expand-backdrop"></div>
+        <div class="message-expand-content">
+            <button type="button" class="message-expand-close" id="messageExpandModalClose" aria-label="Fermer">&times;</button>
+            <div class="message-expand-body">
+                <div class="message-expand-auteur" id="messageExpandAuteur"></div>
+                <div class="message-expand-texte" id="messageExpandTexte"></div>
+                <div class="message-expand-image" id="messageExpandImage"></div>
+                <div class="message-expand-date" id="messageExpandDate"></div>
             </div>
         </div>
     </div>

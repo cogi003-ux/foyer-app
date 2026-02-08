@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS messages (
     id SERIAL PRIMARY KEY,
     auteur VARCHAR(255) NOT NULL,
     texte TEXT NOT NULL,
+    destinataires TEXT DEFAULT '["toute_la_famille"]',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 import datetime
 import os
+import uuid
 from dotenv import load_dotenv
 load_dotenv()
 from database import (
     get_all_taches, add_tache as add_tache_db, delete_tache as delete_tache_db, update_tache_db,
     get_all_messages, add_message as add_message_db, delete_message as delete_message_db,
+    get_supabase_client,
     get_config_famille, update_config_famille, verify_parent_pin,
     add_tache_completee, get_taches_completees,
     add_attente_validation, get_attente_validation, delete_attente_validation,
@@ -17,9 +19,9 @@ from database import (
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
-# Vérifier que les variables d'environnement sont bien chargées
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+# Variables d'environnement (sécurité : pas de clés en dur ; Render / .env)
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     print("\n" + "="*50)
@@ -46,6 +48,7 @@ def service_worker():
 def manifest():
     return app.send_static_file('manifest.json'), 200, {'Content-Type': 'application/json'}
 
+# Toutes les routes /api/* renvoient du JSON (SPA : pas de rechargement, fetch() côté client)
 # API pour les tâches
 @app.route('/api/taches', methods=['GET'])
 def get_taches():
@@ -146,7 +149,7 @@ def update_tache(tache_id):
         print(f"[ERROR] Erreur lors de la mise à jour: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# API pour les messages
+# API pour les messages — Colonne Supabase obligatoire : "destinataires" (pas recipient_id ni destination). Évite PGRST204.
 @app.route('/api/messages', methods=['GET'])
 def get_messages():
     try:
@@ -163,32 +166,76 @@ def get_messages():
             'error': str(e)
         }), 500
 
+MESSAGE_IMAGES_BUCKET = 'message-images'
+
+@app.route('/api/upload-message-image', methods=['POST'])
+def upload_message_image():
+    """Upload une image vers Supabase Storage, retourne l'URL publique (sans rechargement SPA)."""
+    try:
+        file = request.files.get('image') or request.files.get('file')
+        if not file or not file.filename:
+            return jsonify({'success': False, 'error': 'Aucun fichier image'}), 400
+        ext = os.path.splitext(file.filename)[1].lower() or '.jpg'
+        if ext not in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
+            return jsonify({'success': False, 'error': 'Format image non autorisé'}), 400
+        path = f"{uuid.uuid4().hex}{ext}"
+        content = file.read()
+        client = get_supabase_client()
+        if not client:
+            return jsonify({'success': False, 'error': 'Supabase non configuré'}), 500
+        bucket = client.storage.from_(MESSAGE_IMAGES_BUCKET)
+        bucket.upload(path, content)
+        public_url = f"{os.environ.get('SUPABASE_URL')}/storage/v1/object/public/{MESSAGE_IMAGES_BUCKET}/{path}"
+        return jsonify({'success': True, 'url': public_url})
+    except Exception as e:
+        print(f"[ERROR] upload_message_image: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/messages', methods=['POST'])
 def add_message():
     try:
-        if not request.json:
-            return jsonify({'success': False, 'error': 'Aucune donnée reçue'}), 400
+        # Colonne Supabase = "destinataires" (obligatoire). auteur = qui envoie, destinataires = à qui (liste)
+        data = request.get_json(silent=True)
+        if not data:
+            data = {
+                'auteur': (request.form.get('auteur') or '').strip(),
+                'texte': (request.form.get('texte') or '').strip(),
+                'destinataires': request.form.getlist('destinataires') or ['toute_la_famille']
+            }
         
-        data = request.json
+        auteur = str(data.get('auteur') or '').strip()
+        texte = str(data.get('texte') or '').strip()
         
-        # Validation des données requises
-        if 'auteur' not in data or not data['auteur'].strip():
-            return jsonify({'success': False, 'error': "L'auteur est requis"}), 400
-        
-        if 'texte' not in data or not data['texte'].strip():
+        if not auteur:
+            return jsonify({'success': False, 'error': "L'auteur est requis (qui envoie le message)"}), 400
+        if not texte:
             return jsonify({'success': False, 'error': 'Le texte du message est requis'}), 400
         
-        nouveau_message = {
-            'auteur': data['auteur'].strip(),
-            'texte': data['texte'].strip()
-        }
+        if 'destinataires' in data and data['destinataires'] is not None:
+            dest = data['destinataires']
+            destinataires = dest if isinstance(dest, list) else [str(dest).strip()] if dest else ['toute_la_famille']
+        else:
+            destinataires = ['toute_la_famille']
         
-        success, message = add_message_db(nouveau_message)
+        if not destinataires:
+            destinataires = ['toute_la_famille']
+        
+        image_url = (data.get('image_url') or '').strip() if isinstance(data.get('image_url'), str) else None
+        nouveau_message = {
+            'auteur': auteur,
+            'texte': texte,
+            'destinataires': destinataires
+        }
+        if image_url:
+            nouveau_message['image_url'] = image_url
+
+        success, msg = add_message_db(nouveau_message)
         if success:
+            print(f"[FOYER] Message enregistré (auteur={auteur}, destinataires={destinataires})")
             return jsonify({'success': True, 'message': 'Message publié !'})
         else:
-            print(f"[ERROR] Échec de l'enregistrement Supabase: {message}")
-            return jsonify({'success': False, 'error': message}), 500
+            print(f"[ERROR] Échec de l'enregistrement Supabase: {msg}")
+            return jsonify({'success': False, 'error': msg or 'Erreur enregistrement'}), 500
                 
     except ValueError as e:
         print(f"[ERROR] Erreur de validation: {e}")
@@ -197,7 +244,7 @@ def add_message():
         print(f"[ERROR] Erreur inattendue dans add_message: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': f'Erreur serveur: {str(e)}'}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/messages/<int:message_id>', methods=['DELETE'])
 def delete_message(message_id):

@@ -41,12 +41,17 @@ CREATE TABLE IF NOT EXISTS attente_validation (
 );
 
 -- Table des messages (mur de messages)
+-- auteur = qui envoie (sender), destinataires = à qui (recipients, JSON array), texte = content
 CREATE TABLE IF NOT EXISTS messages (
     id SERIAL PRIMARY KEY,
     auteur VARCHAR(255) NOT NULL,
     texte TEXT NOT NULL,
+    destinataires TEXT DEFAULT '["toute_la_famille"]',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Si la table messages existait déjà sans destinataires, ajouter la colonne :
+-- ALTER TABLE messages ADD COLUMN IF NOT EXISTS destinataires TEXT DEFAULT '["toute_la_famille"]';
 
 -- Table de configuration de la famille
 CREATE TABLE IF NOT EXISTS config_famille (

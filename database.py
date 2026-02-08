@@ -305,7 +305,23 @@ def get_all_messages() -> List[Dict]:
         
         try:
             response = client.table(TABLE_MESSAGES).select('*').order('id', desc=True).execute()
-            return response.data if response.data else []
+            rows = response.data if response.data else []
+            import json
+            out = []
+            for row in rows:
+                r = dict(row)
+                dest = r.get('destinataires')
+                if dest is None:
+                    r['destinataires'] = ['toute_la_famille']
+                elif isinstance(dest, str):
+                    try:
+                        r['destinataires'] = json.loads(dest) if dest.strip() else ['toute_la_famille']
+                    except Exception:
+                        r['destinataires'] = ['toute_la_famille']
+                elif not isinstance(dest, list):
+                    r['destinataires'] = ['toute_la_famille']
+                out.append(r)
+            return out
         except Exception as e:
             error_msg = str(e).lower()
             if 'relation' in error_msg and 'does not exist' in error_msg:
@@ -338,6 +354,8 @@ def add_message(message_data: Dict) -> tuple[bool, str]:
         id SERIAL PRIMARY KEY,
         auteur VARCHAR(255) NOT NULL,
         texte TEXT NOT NULL,
+        destinataires TEXT DEFAULT '["toute_la_famille"]',
+        image_url TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     );
     """
@@ -350,11 +368,20 @@ def add_message(message_data: Dict) -> tuple[bool, str]:
     log_debug(f"Table '{TABLE_MESSAGES}' existe")
     
     try:
-        # Préparer les données pour Supabase
+        import json
+        dest = message_data.get('destinataires')
+        if dest is not None:
+            destinataires_str = json.dumps(dest) if isinstance(dest, list) else str(dest)
+        else:
+            destinataires_str = '["toute_la_famille"]'
         supabase_data = {
             'auteur': str(message_data.get('auteur', '')).strip(),
-            'texte': str(message_data.get('texte', '')).strip()
+            'texte': str(message_data.get('texte', '')).strip(),
+            'destinataires': destinataires_str
         }
+        image_url = message_data.get('image_url')
+        if image_url and str(image_url).strip():
+            supabase_data['image_url'] = str(image_url).strip()
         
         log_debug("Données préparées pour Supabase:")
         for key, value in supabase_data.items():
@@ -380,6 +407,7 @@ def add_message(message_data: Dict) -> tuple[bool, str]:
         if response.data:
             message_id = response.data[0].get('id', 'N/A') if response.data else 'N/A'
             log_debug(f"Message enregistré avec succès. ID: {message_id}")
+            print(f"[FOYER] Message inséré en base avec succès. ID: {message_id}")
             return True, "Message enregistré avec succès"
         else:
             error_msg = "Aucune donnée retournée par Supabase"
@@ -609,7 +637,9 @@ def get_classement() -> List[Dict]:
         return []
 
 def update_classement(user_name: str, points: int) -> bool:
-    """Met à jour ou crée une entrée dans le classement"""
+    """Met à jour ou crée une entrée dans le classement.
+    Les points sont attribués au Héros (user_name = exécutant de la quête),
+    jamais à la personne qui valide (parent)."""
     client = get_supabase_client()
     if not client:
         return False
