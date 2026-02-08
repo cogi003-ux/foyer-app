@@ -88,36 +88,15 @@
             </div>
         </header>
 
-        <!-- Barre de Navigation Magique : icônes thématiques + couleurs distinctes (mobile) -->
-        <nav class="tabs-container nav-magic">
-            <button class="tab-btn active" data-tab="dashboard">
-                <i data-lucide="home"></i>
-                <span>Tableau de bord</span>
-            </button>
-            <button class="tab-btn" data-tab="taches">
-                <i data-lucide="scroll-text"></i>
-                <span>Quêtes</span>
-            </button>
-            <button class="tab-btn" data-tab="messages">
-                <i data-lucide="mail"></i>
-                <span>Messages</span>
-            </button>
-            <button class="tab-btn" data-tab="boutique">
-                <i data-lucide="package"></i>
-                <span>Boutique</span>
-            </button>
-            <button class="tab-btn" data-tab="calendrier">
-                <i data-lucide="hourglass"></i>
-                <span>Calendrier</span>
-            </button>
-            <button class="tab-btn" data-tab="classement">
-                <i data-lucide="crown"></i>
-                <span>Classement</span>
-            </button>
-            <button class="tab-btn" data-tab="famille" id="tabFamille" style="display: none;">
-                <i data-lucide="users"></i>
-                <span>Famille</span>
-            </button>
+        <!-- Barre de navigation : 6 onglets (Tableau, Quêtes, Messages, Boutique, Calendrier, Classement) -->
+        <nav class="tabs-container nav-magic" role="navigation" aria-label="Navigation principale">
+            <button type="button" class="tab-btn active" data-tab="dashboard" aria-label="Tableau de bord"><i data-lucide="home"></i><span aria-hidden="true">Tableau</span></button>
+            <button type="button" class="tab-btn" data-tab="taches" aria-label="Quêtes"><i data-lucide="scroll-text"></i><span aria-hidden="true">Quêtes</span></button>
+            <button type="button" class="tab-btn" data-tab="messages" aria-label="Messages"><i data-lucide="mail"></i><span aria-hidden="true">Messages</span></button>
+            <button type="button" class="tab-btn" data-tab="boutique" aria-label="Boutique"><i data-lucide="package"></i><span aria-hidden="true">Boutique</span></button>
+            <button type="button" class="tab-btn" data-tab="calendrier" aria-label="Calendrier"><i data-lucide="hourglass"></i><span aria-hidden="true">Calendrier</span></button>
+            <button type="button" class="tab-btn" data-tab="classement" aria-label="Classement"><i data-lucide="crown"></i><span aria-hidden="true">Classement</span></button>
+            <button type="button" class="tab-btn" data-tab="famille" id="tabFamille" style="display: none;" aria-hidden="true"><i data-lucide="users"></i><span>Famille</span></button>
         </nav>
 
         <!-- Barre de progression des quêtes du jour -->
