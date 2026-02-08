@@ -40,40 +40,53 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Stratégie: Network First, puis Cache
+// URLs à ne JAMAIS mettre en cache : login / auth et API de validation
+function shouldNeverCache(url) {
+  try {
+    const u = new URL(url);
+    const path = u.pathname || '';
+    const search = u.search || '';
+    if (path.indexOf('/api/auth') !== -1) return true;
+    if (path.indexOf('/api/attente-validation') !== -1) return true;
+    if (search.indexOf('login') !== -1 || search.indexOf('parent=1') !== -1) return true;
+    if (path === '/' && search.indexOf('parent') !== -1) return true;
+    if (path === '/parent' || path === '/admin') return true;
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
+// Stratégie: Network First, puis Cache (sauf login et API validation)
 self.addEventListener('fetch', (event) => {
+  const url = event.request.url;
+
+  if (shouldNeverCache(url)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Vérifier si la réponse est valide
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
-
-        // Cloner la réponse
         const responseToCache = response.clone();
-
         caches.open(CACHE_NAME)
           .then((cache) => {
             cache.put(event.request, responseToCache);
           });
-
         return response;
       })
       .catch(() => {
-        // Si le réseau échoue, utiliser le cache
         return caches.match(event.request)
           .then((response) => {
-            if (response) {
-              return response;
-            }
-            // Si pas de cache, retourner une page d'erreur basique
+            if (response) return response;
             return new Response('Mode hors ligne - Contenu non disponible', {
               status: 503,
               statusText: 'Service Unavailable',
-              headers: new Headers({
-                'Content-Type': 'text/plain'
-              })
+              headers: new Headers({ 'Content-Type': 'text/plain' })
             });
           });
       })

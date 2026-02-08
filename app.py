@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request, jsonify
-import datetime
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from datetime import timedelta
 import os
 import uuid
 from dotenv import load_dotenv
@@ -18,6 +18,18 @@ from database import (
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(24).hex()
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+
+def require_parent_auth(f):
+    """Décorateur : exige une session parent valide (expire après 30 min d'inactivité)."""
+    from functools import wraps
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        if not session.get('parent_authenticated'):
+            return jsonify({'success': False, 'error': 'Authentification parent requise', 'require_auth': True}), 401
+        return f(*args, **kwargs)
+    return wrapped
 
 # Variables d'environnement (sécurité : pas de clés en dur ; Render / .env)
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
@@ -39,6 +51,24 @@ else:
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/admin')
+@app.route('/parent')
+def admin_or_parent():
+    """Accès réservé aux parents : vérification session obligatoire, expiration 30 min."""
+    if not session.get('parent_authenticated'):
+        return redirect(url_for('index', parent=1))
+    return render_template('index.html')
+
+
+@app.route('/api/auth/session')
+def get_auth_session():
+    """Indique si la session parent est encore valide (pour le frontend)."""
+    return jsonify({
+        'authenticated': session.get('parent_authenticated', False),
+        'success': True
+    })
 
 @app.route('/static/sw.js')
 def service_worker():
@@ -125,6 +155,7 @@ def add_tache():
         return jsonify({'success': False, 'error': f'Erreur serveur: {str(e)}'}), 500
 
 @app.route('/api/taches/<int:tache_id>', methods=['DELETE'])
+@require_parent_auth
 def delete_tache(tache_id):
     success = delete_tache_db(tache_id)
     if success:
@@ -254,16 +285,17 @@ def delete_message(message_id):
     else:
         return jsonify({'success': False, 'error': 'Erreur lors de la suppression'}), 500
 
-# API pour l'authentification parent
+# API pour l'authentification parent (définit la session, expiration 30 min d'inactivité)
 @app.route('/api/auth/parent', methods=['POST'])
 def verify_parent():
     try:
         data = request.json
         pin = data.get('pin', '')
         if verify_parent_pin(pin):
+            session['parent_authenticated'] = True
+            session.permanent = True
             return jsonify({'success': True, 'authenticated': True})
-        else:
-            return jsonify({'success': False, 'authenticated': False, 'error': 'PIN incorrect'}), 401
+        return jsonify({'success': False, 'authenticated': False, 'error': 'PIN incorrect'}), 401
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -277,6 +309,7 @@ def get_config():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/config/famille', methods=['PUT'])
+@require_parent_auth
 def update_config():
     try:
         data = request.json
@@ -342,6 +375,7 @@ def add_attente_validation_api():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/attente-validation/<int:validation_id>', methods=['DELETE'])
+@require_parent_auth
 def delete_attente_validation_api(validation_id):
     """Supprime de attente_validation ET marque validated=TRUE dans taches_completees."""
     try:

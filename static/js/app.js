@@ -887,7 +887,18 @@ async function validateTache(id) {
 async function finishValidateTache(id, tache, validation) {
     try {
         if (validation && validation.id) {
-            await trackPendingSave(fetch(`${API_BASE}/api/attente-validation/${validation.id}`, { method: 'DELETE' }));
+            const delRes = await trackPendingSave(fetch(`${API_BASE}/api/attente-validation/${validation.id}`, { method: 'DELETE' }));
+            if (delRes && delRes.status === 401) {
+                const data = await delRes.json().catch(() => ({}));
+                if (data.require_auth) {
+                    appData.isParent = false;
+                    _pendingParentAuth = getCurrentUser();
+                    updateParentIndicator();
+                    openAuthModal();
+                    showToast('Session expirée. Entre à nouveau le code du Grand Mage.', 'error');
+                    return;
+                }
+            }
         }
         await trackPendingSave(fetch(`${API_BASE}/api/taches/${id}`, {
             method: 'PATCH',
@@ -1827,7 +1838,7 @@ function initializeUserSelector() {
             const isParentUser = appData.configFamille &&
                 (appData.configFamille.parents || []).includes(selectedUser);
 
-            if (isParentUser && !appData.isParent) {
+            if (isParentUser) {
                 _pendingParentAuth = selectedUser;
                 showToast('🔐 Entre le code du Grand Mage', 'info');
                 openAuthModal();
@@ -1851,13 +1862,12 @@ function initializeUserSelector() {
         ];
         
         // Toujours afficher le dernier utilisateur dans le sélecteur (mémorisation localStorage)
-        if (allMembers.includes(savedUser)) {
+            if (allMembers.includes(savedUser)) {
             userSelect.value = savedUser;
             const isParentUser = (appData.configFamille.parents || []).includes(savedUser);
-            if (isParentUser && !appData.isParent) {
-                // Parent : on restaure l'affichage "Qui es-tu ?" mais pas les droits parent (PIN requis)
-                appData.currentUser = savedUser;
-                // localStorage déjà rempli par la session précédente
+            if (isParentUser) {
+                _pendingParentAuth = savedUser;
+                openAuthModal();
                 return;
             }
             setCurrentUser(savedUser);
