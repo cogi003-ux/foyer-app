@@ -1701,7 +1701,7 @@ body.theme-enfant .cosmic-bg {
         grid-template-columns: 1fr;
     }
 
-    /* Barre de Navigation Magique — fond transparent flou, icônes 32px colorées, glow, animation clic */
+    /* Barre de Navigation Magique — explosion de couleurs, glow currentColor, flex:1, pulse actif */
     .tabs-container.nav-magic {
         position: fixed;
         bottom: 0;
@@ -1709,8 +1709,8 @@ body.theme-enfant .cosmic-bg {
         right: 0;
         z-index: 100;
         margin: 0;
-        padding: 12px 0;
-        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        padding: 8px 0;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
         background-color: rgba(0, 0, 0, 0.6);
         backdrop-filter: blur(15px);
         -webkit-backdrop-filter: blur(15px);
@@ -1723,87 +1723,59 @@ body.theme-enfant .cosmic-bg {
         box-shadow: 0 -4px 28px rgba(0, 0, 0, 0.35);
     }
     .tabs-container.nav-magic .tab-btn {
-        flex: 0 0 auto;
-        min-height: 56px;
-        min-width: 48px;
-        padding: 10px;
+        flex: 1;
+        min-height: 52px;
+        padding: 0;
+        margin: 0;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
+        text-align: center;
         background: transparent;
         border: none;
-        border-radius: 14px;
+        border-radius: 0;
         color: inherit;
         box-shadow: none;
         transition: transform 0.15s ease;
     }
     .tabs-container.nav-magic .tab-btn:active {
-        transform: scale(1.2);
+        transform: scale(1.1);
     }
     .tabs-container.nav-magic .tab-btn i {
         width: 32px;
         height: 32px;
         min-width: 32px;
         min-height: 32px;
+        font-size: 32px !important;
         stroke-width: 2;
-        transition: filter 0.2s ease, color 0.2s ease;
+        filter: drop-shadow(0 0 12px currentColor);
+        transition: color 0.2s ease;
+    }
+    .tabs-container.nav-magic .tab-btn.active i {
+        animation: pulse 2s infinite;
     }
     .tabs-container.nav-magic .tab-btn span {
         display: none;
     }
-    /* Tableau : maison magique — Doré */
+    /* Couleurs Enchantées (hex exacts) + glow currentColor */
     .tabs-container.nav-magic .tab-btn[data-tab="dashboard"] i {
-        color: #ffd700;
-        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+        color: #FFD700;
     }
-    .tabs-container.nav-magic .tab-btn[data-tab="dashboard"].active i {
-        filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.95)) drop-shadow(0 0 16px rgba(255, 215, 0, 0.5));
-    }
-    /* Quêtes : parchemin — Bleu scintillant */
     .tabs-container.nav-magic .tab-btn[data-tab="taches"] i {
-        color: #60a5fa;
-        filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.8));
+        color: #00BFFF;
     }
-    .tabs-container.nav-magic .tab-btn[data-tab="taches"].active i {
-        color: #93c5fd;
-        filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.95)) drop-shadow(0 0 16px rgba(96, 165, 250, 0.5));
-    }
-    /* Messages : enveloppe volante — Violet */
     .tabs-container.nav-magic .tab-btn[data-tab="messages"] i {
-        color: #c084fc;
-        filter: drop-shadow(0 0 8px rgba(192, 132, 252, 0.8));
+        color: #BF00FF;
     }
-    .tabs-container.nav-magic .tab-btn[data-tab="messages"].active i {
-        color: #e9d5ff;
-        filter: drop-shadow(0 0 10px rgba(192, 132, 252, 0.95)) drop-shadow(0 0 16px rgba(192, 132, 252, 0.5));
-    }
-    /* Boutique : coffre au trésor — Vert émeraude */
     .tabs-container.nav-magic .tab-btn[data-tab="boutique"] i {
-        color: #34d399;
-        filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.8));
+        color: #32CD32;
     }
-    .tabs-container.nav-magic .tab-btn[data-tab="boutique"].active i {
-        color: #6ee7b7;
-        filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.95)) drop-shadow(0 0 16px rgba(52, 211, 153, 0.5));
-    }
-    /* Calendrier : sablier — Ambre */
     .tabs-container.nav-magic .tab-btn[data-tab="calendrier"] i {
-        color: #fbbf24;
-        filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
+        color: #FF8C00;
     }
-    .tabs-container.nav-magic .tab-btn[data-tab="calendrier"].active i {
-        color: #fde047;
-        filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.95)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.5));
-    }
-    /* Classement : couronne — Rouge rubis */
     .tabs-container.nav-magic .tab-btn[data-tab="classement"] i {
-        color: #f87171;
-        filter: drop-shadow(0 0 8px rgba(248, 113, 113, 0.8));
-    }
-    .tabs-container.nav-magic .tab-btn[data-tab="classement"].active i {
-        color: #fca5a5;
-        filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.95)) drop-shadow(0 0 16px rgba(248, 113, 113, 0.5));
+        color: #FF0000;
     }
     .tabs-container.nav-magic .tab-btn:hover {
         background: rgba(255, 255, 255, 0.05);
