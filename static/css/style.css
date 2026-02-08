@@ -1674,9 +1674,10 @@ body.theme-enfant .cosmic-bg {
 }
 
 @media (max-width: 768px) {
+    /* Contenu ne doit pas passer sous la barre de navigation fixe */
     body {
         padding: 12px;
-        padding-bottom: 88px; /* place pour la bottom nav */
+        padding-bottom: max(88px, calc(72px + env(safe-area-inset-bottom)));
     }
 
     .glass-card {
@@ -1700,7 +1701,7 @@ body.theme-enfant .cosmic-bg {
         grid-template-columns: 1fr;
     }
 
-    /* Bottom nav sur mobile/tablette */
+    /* Barre de navigation fixe en bas — style moderne, thème Harry Potter (icônes dorées) */
     .tabs-container {
         position: fixed;
         bottom: 0;
@@ -1708,35 +1709,58 @@ body.theme-enfant .cosmic-bg {
         right: 0;
         z-index: 100;
         margin: 0;
-        padding: 10px 8px;
-        padding-bottom: max(10px, env(safe-area-inset-bottom));
-        background: rgba(0,0,0,0.85);
-        backdrop-filter: blur(12px);
-        border-top: 2px solid rgba(255,215,0,0.4);
-        border-radius: 0;
+        padding: 8px 6px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        background: rgba(10, 10, 25, 0.92);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border-top: 1px solid rgba(255, 215, 0, 0.35);
+        border-radius: 20px 20px 0 0;
         flex-wrap: nowrap;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        gap: 6px;
+        gap: 4px;
+        box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
     }
     .tabs-container .tab-btn {
         flex: 1 1 0;
         min-width: 0;
-        min-height: 52px;
-        padding: 10px 8px;
-        font-size: 0.75rem;
+        min-height: 56px;
+        padding: 6px 4px;
+        font-size: 0.7rem;
         flex-direction: column;
         gap: 4px;
+        background: transparent;
+        border: none;
+        border-radius: 12px;
+        color: rgba(255, 255, 255, 0.65);
+        box-shadow: none;
     }
     .tabs-container .tab-btn i {
-        width: 22px;
-        height: 22px;
+        width: 24px;
+        height: 24px;
+        color: rgba(255, 215, 0, 0.7);
+        stroke-width: 2;
     }
     .tabs-container .tab-btn span {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 100%;
+    }
+    /* Onglet actif : indicateur visuel + icône et texte dorés */
+    .tabs-container .tab-btn.active {
+        background: rgba(255, 215, 0, 0.15);
+        color: #ffd700;
+        box-shadow: inset 0 -2px 0 0 rgba(255, 215, 0, 0.9);
+    }
+    .tabs-container .tab-btn.active i {
+        color: #ffd700;
+        filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.5));
+    }
+    .tabs-container .tab-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        transform: none;
     }
 
     .user-selector {
