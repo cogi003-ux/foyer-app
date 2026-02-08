@@ -887,7 +887,7 @@ async function validateTache(id) {
 async function finishValidateTache(id, tache, validation) {
     try {
         if (validation && validation.id) {
-            await fetch(`${API_BASE}/api/attente-validation/${validation.id}`, { method: 'DELETE' });
+            await trackPendingSave(fetch(`${API_BASE}/api/attente-validation/${validation.id}`, { method: 'DELETE' }));
         }
         await trackPendingSave(fetch(`${API_BASE}/api/taches/${id}`, {
             method: 'PATCH',

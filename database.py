@@ -570,6 +570,20 @@ def get_taches_completees(user_name: str = None, date_start: str = None, date_en
         log_error(f"Erreur lors de la récupération des tâches complétées: {e}")
         return []
 
+
+def update_tache_completee_validated(record_id: int) -> bool:
+    """Marque une tâche complétée comme validée (validated = TRUE)."""
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        client.table(TABLE_TACHES_COMPLETEES).update({'validated': True}).eq('id', record_id).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur lors de la mise à jour validated: {e}")
+        return False
+
+
 # ========== FONCTIONS POUR L'ATTENTE DE VALIDATION ==========
 
 def add_attente_validation(validation_data: Dict) -> bool:
@@ -593,20 +607,65 @@ def add_attente_validation(validation_data: Dict) -> bool:
         return False
 
 def get_attente_validation(user_name: str = None) -> List[Dict]:
-    """Récupère les tâches en attente de validation"""
+    """
+    Récupère TOUTES les tâches en attente de validation.
+    Source : table attente_validation (toutes les complétions passent par ici).
+    Aucun filtre par utilisateur : toute la famille voit tout ce qui est à valider.
+    """
     client = get_supabase_client()
     if not client:
         return []
-    
     try:
         query = client.table(TABLE_ATTENTE_VALIDATION).select('*')
-        if user_name:
-            query = query.eq('user_name', user_name)
         response = query.order('created_at', desc=True).execute()
         return response.data if response.data else []
     except Exception as e:
         log_error(f"Erreur lors de la récupération de l'attente: {e}")
         return []
+
+
+def validate_attente_and_mark_completee(validation_id: int) -> bool:
+    """
+    Quand le parent valide : supprime la ligne de attente_validation ET
+    met à jour la ligne correspondante dans taches_completees (validated = TRUE).
+    """
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        row = client.table(TABLE_ATTENTE_VALIDATION).select('*').eq('id', validation_id).execute()
+        if not row.data or len(row.data) == 0:
+            log_error(f"validate_attente: id {validation_id} introuvable dans attente_validation")
+            return False
+        v = row.data[0]
+        task_id = v.get('task_id')
+        task_nom = str(v.get('task_nom') or '').strip()
+        user_name = str(v.get('user_name') or '').strip()
+        date_completion = str(v.get('date_completion') or '')
+        client.table(TABLE_ATTENTE_VALIDATION).delete().eq('id', validation_id).execute()
+        q = (
+            client.table(TABLE_TACHES_COMPLETEES)
+            .select('id, task_id, task_nom')
+            .eq('user_name', user_name)
+            .eq('date_completion', date_completion)
+            .eq('validated', False)
+        )
+        resp = q.execute()
+        if not resp.data:
+            return True
+        for r in resp.data:
+            rid = r.get('id')
+            if task_id is not None and r.get('task_id') == task_id:
+                client.table(TABLE_TACHES_COMPLETEES).update({'validated': True}).eq('id', rid).execute()
+                return True
+            if (r.get('task_nom') or '').strip() == task_nom:
+                client.table(TABLE_TACHES_COMPLETEES).update({'validated': True}).eq('id', rid).execute()
+                return True
+        return True
+    except Exception as e:
+        log_error(f"Erreur validate_attente_and_mark_completee: {e}")
+        return False
+
 
 def delete_attente_validation(validation_id: int) -> bool:
     """Supprime une validation en attente"""

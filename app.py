@@ -9,8 +9,8 @@ from database import (
     get_all_messages, add_message as add_message_db, delete_message as delete_message_db,
     get_supabase_client,
     get_config_famille, update_config_famille, verify_parent_pin,
-    add_tache_completee, get_taches_completees,
-    add_attente_validation, get_attente_validation, delete_attente_validation,
+    add_tache_completee, get_taches_completees, update_tache_completee_validated,
+    add_attente_validation, get_attente_validation, delete_attente_validation, validate_attente_and_mark_completee,
     get_classement, update_classement,
     get_recompenses_personnalisees, add_recompense_personnalisee,
     get_recompenses_achetees, add_recompense_achetee
@@ -310,12 +310,22 @@ def add_tache_completee_api():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# API pour l'attente de validation
+@app.route('/api/taches-completees/<int:record_id>', methods=['PATCH'])
+def update_tache_completee_api(record_id):
+    """Marque une tâche complétée comme validée (validated = TRUE)."""
+    try:
+        data = request.json or {}
+        if data.get('validated') is True and update_tache_completee_validated(record_id):
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': 'Mise à jour refusée ou échouée'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# API pour l'attente de validation (source : attente_validation, toute la famille)
 @app.route('/api/attente-validation', methods=['GET'])
 def get_attente_validation_api():
     try:
-        user_name = request.args.get('user_name')
-        validations = get_attente_validation(user_name)
+        validations = get_attente_validation()
         return jsonify({'success': True, 'validations': validations})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -333,11 +343,11 @@ def add_attente_validation_api():
 
 @app.route('/api/attente-validation/<int:validation_id>', methods=['DELETE'])
 def delete_attente_validation_api(validation_id):
+    """Supprime de attente_validation ET marque validated=TRUE dans taches_completees."""
     try:
-        if delete_attente_validation(validation_id):
+        if validate_attente_and_mark_completee(validation_id):
             return jsonify({'success': True})
-        else:
-            return jsonify({'success': False, 'error': 'Erreur lors de la suppression'}), 500
+        return jsonify({'success': False, 'error': 'Validation introuvable ou erreur'}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
