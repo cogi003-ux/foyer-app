@@ -32,9 +32,99 @@ body {
     position: relative;
     overflow-x: hidden;
     color: #FFFFFF;
+    background-color: #050510;
 }
 
-/* ——— Galaxie Canvas (arrière-plan fixe, tout l'écran) ——— */
+/* ——— Moteur de Galaxie CSS (3 couches organiques + vignette) ——— */
+.galaxy-engine {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.galaxy-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    will-change: transform;
+}
+
+/* Couche 1 — Le Cœur : radial indigo qui bouge lentement */
+.galaxy-layer--heart {
+    background: radial-gradient(
+        ellipse 120% 100% at 50% 50%,
+        rgba(75, 0, 130, 0.85) 0%,
+        rgba(75, 0, 130, 0.4) 35%,
+        transparent 70%
+    );
+    mix-blend-mode: screen;
+    animation: galaxy-heart 45s ease-in-out infinite;
+}
+
+@keyframes galaxy-heart {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    25% { transform: translate(3%, -2%) rotate(2deg) scale(1.08); }
+    50% { transform: translate(-4%, 1%) rotate(-1deg) scale(0.96); }
+    75% { transform: translate(2%, 3%) rotate(1deg) scale(1.05); }
+}
+
+/* Couche 2 — La Magie : formes floues magenta/cyan qui tournent et se déforment */
+.galaxy-layer--magic {
+    background: conic-gradient(
+        from 0deg at 50% 50%,
+        rgba(255, 0, 127, 0.3) 0deg,
+        rgba(0, 255, 255, 0.25) 120deg,
+        rgba(255, 0, 127, 0.3) 240deg,
+        rgba(0, 255, 255, 0.25) 360deg
+    );
+    filter: blur(80px);
+    -webkit-filter: blur(80px);
+    mix-blend-mode: overlay;
+    animation: galaxy-magic 35s ease-in-out infinite;
+}
+
+@keyframes galaxy-magic {
+    0%, 100% { transform: translate(-2%, 1%) rotate(0deg) scale(1.1); }
+    33% { transform: translate(4%, -3%) rotate(120deg) scale(1.2); }
+    66% { transform: translate(-3%, 2%) rotate(240deg) scale(0.95); }
+}
+
+/* Couche 3 — Poussière d'étoiles : motif de points qui scintille */
+.galaxy-layer--stardust {
+    background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: 0 0, 12px 12px;
+    mix-blend-mode: screen;
+    animation: galaxy-stardust 8s ease-in-out infinite;
+}
+
+@keyframes galaxy-stardust {
+    0%, 100% { opacity: 0.6; transform: translate(0, 0) scale(1); }
+    50% { opacity: 1; transform: translate(1%, -1%) scale(1.02); }
+}
+
+/* Vignette : ombre interne pour garder le focus au centre */
+.galaxy-vignette {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    box-shadow: inset 0 0 25vmin rgba(5, 5, 16, 0.85),
+                inset 0 0 50vmin rgba(5, 5, 16, 0.5);
+}
+
+/* ——— Galaxie Canvas (dessin par-dessus le moteur CSS, fond transparent) ——— */
 #galaxy-bg {
     position: fixed;
     top: 0;
@@ -43,7 +133,7 @@ body {
     height: 100vh;
     z-index: -1;
     display: block;
-    background: #020111;
+    background: transparent;
 }
 
 /* Cartes semi-transparentes pour laisser voir la galaxie + flou vitre */
@@ -1671,6 +1761,85 @@ body.theme-enfant .cosmic-bg {
 .btn-complete {
     color: #FFFFFF !important;
     text-shadow: var(--game-text-shadow);
+}
+
+/* ========== NAVBAR JEU MOBILE (6 onglets, couleurs néon, bounce) ========== */
+.nav-game {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100;
+    display: flex !important;
+    justify-content: space-around !important;
+    align-items: center;
+    gap: 0;
+    margin: 0 !important;
+    padding: 10px 4px !important;
+    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    background-color: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+    border-top: 1px solid rgba(255, 215, 0, 0.3);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+}
+.nav-game .nav-game__item {
+    display: flex !important;
+    flex: 1 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 52px;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    border: none !important;
+    text-decoration: none !important;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.nav-game .nav-game__item:active .nav-game__icon {
+    animation: nav-bounce 0.4s ease !important;
+}
+@keyframes nav-bounce {
+    0%, 100% { transform: scale(1); }
+    40% { transform: scale(1.25); }
+    70% { transform: scale(0.95); }
+}
+.nav-game__icon {
+    font-size: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+/* Couleurs néon par onglet — runes magiques */
+.nav-game .nav-game__item[data-tab="dashboard"] .nav-game__icon {
+    color: #FFD700 !important;
+    filter: drop-shadow(0 0 10px #FFD700) !important;
+}
+.nav-game .nav-game__item[data-tab="taches"] .nav-game__icon {
+    color: #00BFFF !important;
+    filter: drop-shadow(0 0 10px #00BFFF) !important;
+}
+.nav-game .nav-game__item[data-tab="messages"] .nav-game__icon {
+    color: #BF00FF !important;
+    filter: drop-shadow(0 0 10px #BF00FF) !important;
+}
+.nav-game .nav-game__item[data-tab="boutique"] .nav-game__icon {
+    color: #32CD32 !important;
+    filter: drop-shadow(0 0 10px #32CD32) !important;
+}
+.nav-game .nav-game__item[data-tab="calendrier"] .nav-game__icon {
+    color: #FF8C00 !important;
+    filter: drop-shadow(0 0 10px #FF8C00) !important;
+}
+.nav-game .nav-game__item[data-tab="classement"] .nav-game__icon {
+    color: #FF0000 !important;
+    filter: drop-shadow(0 0 10px #FF0000) !important;
+}
+.nav-game .nav-game__item.active .nav-game__icon {
+    filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 16px currentColor) !important;
 }
 
 @media (max-width: 768px) {

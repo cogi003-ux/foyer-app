@@ -18,6 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     
@@ -37,6 +38,13 @@
     </script>
 </head>
 <body>
+    <!-- Moteur de Galaxie CSS — 3 couches animées (nébuleuses + poussière d'étoiles) -->
+    <div class="galaxy-engine" id="galaxy-engine" aria-hidden="true">
+        <div class="galaxy-layer galaxy-layer--heart"></div>
+        <div class="galaxy-layer galaxy-layer--magic"></div>
+        <div class="galaxy-layer galaxy-layer--stardust"></div>
+        <div class="galaxy-vignette" aria-hidden="true"></div>
+    </div>
     <canvas id="galaxy-bg" aria-hidden="true"></canvas>
     <input type="file" id="capture-photo" style="display:none" capture="camera" accept="image/*">
     <div id="cosmic-bg" class="cosmic-bg" aria-hidden="true">
@@ -88,15 +96,14 @@
             </div>
         </header>
 
-        <!-- Navigation : 6 onglets (liens SPA) — Tableau, Quêtes, Messages, Boutique, Calendrier, Classement -->
-        <nav class="tabs-container nav-magic" role="navigation" aria-label="Navigation principale">
-            <a href="/" class="tab-btn active" data-tab="dashboard" aria-label="Tableau de bord"><i data-lucide="home"></i></a>
-            <a href="/quetes" class="tab-btn" data-tab="taches" aria-label="Quêtes"><i data-lucide="scroll-text"></i></a>
-            <a href="/messages" class="tab-btn" data-tab="messages" aria-label="Messages"><i data-lucide="mail"></i></a>
-            <a href="/boutique" class="tab-btn" data-tab="boutique" aria-label="Boutique"><i data-lucide="package"></i></a>
-            <a href="/calendrier" class="tab-btn" data-tab="calendrier" aria-label="Calendrier"><i data-lucide="hourglass"></i></a>
-            <a href="/classement" class="tab-btn" data-tab="classement" aria-label="Classement"><i data-lucide="crown"></i></a>
-            <button type="button" class="tab-btn" data-tab="famille" id="tabFamille" style="display: none;" aria-hidden="true"><i data-lucide="users"></i></button>
+        <!-- NAVBAR JEU MOBILE — 6 onglets en dur, icônes FontAwesome, zéro masquage -->
+        <nav class="nav-game tabs-container" id="nav-game" role="navigation" aria-label="Menu principal">
+            <a href="/" class="nav-game__item tab-btn active" data-tab="dashboard" aria-label="Tableau de bord"><i class="fas fa-home nav-game__icon"></i></a>
+            <a href="/quetes" class="nav-game__item tab-btn" data-tab="taches" aria-label="Quêtes"><i class="fas fa-scroll nav-game__icon"></i></a>
+            <a href="/messages" class="nav-game__item tab-btn" data-tab="messages" aria-label="Messages"><i class="fas fa-envelope-open-text nav-game__icon"></i></a>
+            <a href="/boutique" class="nav-game__item tab-btn" data-tab="boutique" aria-label="Boutique"><i class="fas fa-gem nav-game__icon"></i></a>
+            <a href="/calendrier" class="nav-game__item tab-btn" data-tab="calendrier" aria-label="Calendrier"><i class="fas fa-calendar-alt nav-game__icon"></i></a>
+            <a href="/classement" class="nav-game__item tab-btn" data-tab="classement" aria-label="Classement"><i class="fas fa-trophy nav-game__icon"></i></a>
         </nav>
 
         <!-- Barre de progression des quêtes du jour -->
