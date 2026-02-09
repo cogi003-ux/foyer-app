@@ -123,8 +123,8 @@ function trackPendingSave(promise) {
     const canvas = document.getElementById('galaxy-bg');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const STAR_COUNT = 1500;
-    const NEBULA_COLORS = ['#00d2ff', '#9d50bb', '#6e48aa', '#00d2ff'];
+    const STAR_COUNT = 1800;
+    const NEBULA_COLORS = ['#7c3aed', '#a78bfa', '#ec4899', '#06b6d4', '#f59e0b'];
     let stars = [];
     let nebulaAngle = 0;
     let animationId = null;
@@ -161,17 +161,20 @@ function trackPendingSave(promise) {
             { r: 0.25 * radius, a: 0 },
             { r: 0.3 * radius, a: Math.PI * 0.6 },
             { r: 0.28 * radius, a: Math.PI * 1.3 },
-            { r: 0.22 * radius, a: Math.PI * 1.9 }
+            { r: 0.22 * radius, a: Math.PI * 1.9 },
+            { r: 0.26 * radius, a: Math.PI * 0.3 },
+            { r: 0.24 * radius, a: Math.PI * 1.6 }
         ];
         ctx.save();
-        ctx.globalAlpha = 0.055;
-        for (let i = 0; i < 4; i++) {
+        ctx.globalAlpha = 0.07;
+        for (let i = 0; i < offsets.length; i++) {
             const o = offsets[i];
             const x = cx + Math.cos(nebulaAngle + o.a) * o.r;
             const y = cy + Math.sin(nebulaAngle + o.a) * o.r;
             const g = ctx.createRadialGradient(x, y, 0, x, y, cloudRadius);
-            g.addColorStop(0, NEBULA_COLORS[i]);
-            g.addColorStop(0.5, NEBULA_COLORS[i]);
+            const color = NEBULA_COLORS[i % NEBULA_COLORS.length];
+            g.addColorStop(0, color);
+            g.addColorStop(0.5, color);
             g.addColorStop(1, 'transparent');
             ctx.beginPath();
             ctx.arc(x, y, cloudRadius, 0, Math.PI * 2);
@@ -201,8 +204,7 @@ function trackPendingSave(promise) {
         const w = canvas.width;
         const h = canvas.height;
         if (!w || !h) { animationId = requestAnimationFrame(loop); return; }
-        ctx.fillStyle = '#020111';
-        ctx.fillRect(0, 0, w, h);
+        ctx.clearRect(0, 0, w, h);
         drawNebula(w, h);
         drawStars(w, h);
         animationId = requestAnimationFrame(loop);

@@ -32,10 +32,12 @@ body {
     position: relative;
     overflow-x: hidden;
     color: #FFFFFF;
-    background-color: #050510;
+    /* Fond profond type espace : noir bleuté, les nébuleuses CSS + canvas étoiles par-dessus */
+    background-color: #0a0618;
+    background-image: radial-gradient(ellipse 120% 100% at 50% 0%, rgba(30, 27, 75, 0.4) 0%, transparent 50%) !important;
 }
 
-/* ——— Odyssée Galactique : Nébuleuse dynamique (3 couches + poussière magique) ——— */
+/* ——— Nébuleuse Galaxie : fond riche en variations de couleurs (étoiles conservées via canvas) ——— */
 .galaxy-engine {
     position: fixed !important;
     top: 0 !important;
@@ -57,35 +59,39 @@ body {
     will-change: transform !important;
 }
 
-/* Couche 1 — Indigo #2D006E : radial géant qui danse */
+/* Couche 1 — Cœur indigo/violet/magenta (variations) */
 .galaxy-layer--heart {
     background: radial-gradient(
-        ellipse 140% 120% at 50% 50%,
-        rgba(45, 0, 110, 0.9) 0%,
-        rgba(45, 0, 110, 0.5) 40%,
-        transparent 70%
+        ellipse 150% 130% at 50% 45%,
+        rgba(75, 0, 130, 0.85) 0%,
+        rgba(88, 28, 135, 0.6) 25%,
+        rgba(147, 51, 234, 0.4) 45%,
+        rgba(192, 132, 252, 0.2) 60%,
+        transparent 75%
     ) !important;
-    filter: blur(100px) !important;
-    -webkit-filter: blur(100px) !important;
+    filter: blur(90px) !important;
+    -webkit-filter: blur(90px) !important;
     mix-blend-mode: screen !important;
-    animation: galaxy-dance-1 30s ease-in-out infinite !important;
+    animation: galaxy-dance-1 35s ease-in-out infinite !important;
 }
 
-/* Couche 2 — Pourpre #800080 : radial géant qui danse */
+/* Couche 2 — Pourpre / rose nébuleuse */
 .galaxy-layer--magic {
     background: radial-gradient(
-        ellipse 120% 140% at 60% 40%,
-        rgba(128, 0, 128, 0.75) 0%,
-        rgba(128, 0, 128, 0.35) 45%,
-        transparent 70%
+        ellipse 130% 150% at 65% 35%,
+        rgba(126, 34, 206, 0.7) 0%,
+        rgba(168, 85, 247, 0.5) 30%,
+        rgba(236, 72, 153, 0.35) 55%,
+        rgba(251, 207, 232, 0.15) 70%,
+        transparent 82%
     ) !important;
     filter: blur(100px) !important;
     -webkit-filter: blur(100px) !important;
     mix-blend-mode: screen !important;
-    animation: galaxy-dance-2 30s ease-in-out infinite !important;
+    animation: galaxy-dance-2 40s ease-in-out infinite !important;
 }
 
-/* Couche 3 — Bleu profond #004E92 : radial géant qui danse */
+/* Couche 3 — Bleu profond / cyan (variations) */
 .galaxy-layer--deep {
     position: fixed !important;
     top: 0 !important;
@@ -95,33 +101,62 @@ body {
     z-index: -1 !important;
     will-change: transform !important;
     background: radial-gradient(
-        ellipse 130% 130% at 40% 60%,
-        rgba(0, 78, 146, 0.7) 0%,
-        rgba(0, 78, 146, 0.3) 40%,
-        transparent 65%
+        ellipse 140% 140% at 35% 65%,
+        rgba(0, 78, 146, 0.65) 0%,
+        rgba(30, 64, 175, 0.45) 30%,
+        rgba(14, 165, 233, 0.3) 50%,
+        rgba(103, 232, 249, 0.12) 68%,
+        transparent 80%
     ) !important;
-    filter: blur(100px) !important;
-    -webkit-filter: blur(100px) !important;
+    filter: blur(95px) !important;
+    -webkit-filter: blur(95px) !important;
     mix-blend-mode: screen !important;
-    animation: galaxy-dance-3 30s ease-in-out infinite !important;
+    animation: galaxy-dance-3 38s ease-in-out infinite !important;
+}
+
+/* Couche 4 — Accent or / ambre (touche chaude dans la galaxie) */
+.galaxy-layer--warm {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: -1 !important;
+    will-change: transform !important;
+    background: radial-gradient(
+        ellipse 100% 120% at 75% 70%,
+        rgba(180, 83, 9, 0.25) 0%,
+        rgba(217, 119, 6, 0.18) 35%,
+        rgba(251, 191, 36, 0.1) 55%,
+        transparent 75%
+    ) !important;
+    filter: blur(80px) !important;
+    -webkit-filter: blur(80px) !important;
+    mix-blend-mode: screen !important;
+    animation: galaxy-dance-4 42s ease-in-out infinite !important;
 }
 
 @keyframes galaxy-dance-1 {
     0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
-    25% { transform: translate(5%, -4%) rotate(3deg) scale(1.12); }
-    50% { transform: translate(-6%, 3%) rotate(-2deg) scale(0.94); }
-    75% { transform: translate(3%, 5%) rotate(2deg) scale(1.06); }
+    25% { transform: translate(4%, -5%) rotate(2deg) scale(1.1); }
+    50% { transform: translate(-5%, 4%) rotate(-1deg) scale(0.95); }
+    75% { transform: translate(3%, 4%) rotate(1deg) scale(1.05); }
 }
 
 @keyframes galaxy-dance-2 {
-    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1.1); }
-    33% { transform: translate(-4%, 4%) rotate(120deg) scale(1.18); }
-    66% { transform: translate(4%, -3%) rotate(240deg) scale(0.96); }
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1.08); }
+    33% { transform: translate(-5%, 3%) rotate(110deg) scale(1.15); }
+    66% { transform: translate(4%, -4%) rotate(230deg) scale(0.97); }
 }
 
 @keyframes galaxy-dance-3 {
-    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1.05); }
-    50% { transform: translate(-3%, -5%) rotate(180deg) scale(1.15); }
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1.02); }
+    50% { transform: translate(-4%, -4%) rotate(175deg) scale(1.12); }
+}
+
+@keyframes galaxy-dance-4 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    50% { transform: translate(3%, 2%) rotate(90deg) scale(1.08); }
 }
 
 /* Couche 4 — Poussière magique : petits points blancs qui scintillent à rythmes différents */
@@ -1898,6 +1933,7 @@ body.theme-enfant .cosmic-bg {
     to { transform: rotate(360deg); }
 }
 
+/* Style dessin animé magique : contour doux + lueur discrète (pas trop brillant) */
 .nav-game__icon {
     font-size: 32px !important;
     width: 32px !important;
@@ -1908,43 +1944,46 @@ body.theme-enfant .cosmic-bg {
     mix-blend-mode: screen !important;
     position: relative !important;
     z-index: 1 !important;
+    -webkit-text-stroke: 1px rgba(0, 0, 0, 0.35) !important;
+    paint-order: stroke fill !important;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)) !important;
 }
 
-/* Artefacts magiques : lueur interne + externe (drop-shadow 15px + text-shadow 20px) + relief */
+/* Lueur réduite : drop-shadow 6px, text-shadow 8px, opacité ~0.45 pour ne pas éblouir */
 .nav-game .nav-game__item[data-tab="dashboard"] .nav-game__icon {
-    color: #FFD700 !important;
-    filter: drop-shadow(0 0 15px #FFD700) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
-    text-shadow: 0 0 20px #FFD700, 0 0 8px rgba(255,215,0,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
+    color: #E8C547 !important;
+    filter: drop-shadow(0 0 6px rgba(232, 197, 71, 0.5)) drop-shadow(0 1px 2px rgba(0,0,0,0.4)) !important;
+    text-shadow: 0 0 8px rgba(232, 197, 71, 0.45) !important;
 }
 .nav-game .nav-game__item[data-tab="taches"] .nav-game__icon {
-    color: #00FFFF !important;
-    filter: drop-shadow(0 0 15px #00FFFF) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
-    text-shadow: 0 0 20px #00FFFF, 0 0 8px rgba(0,255,255,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
+    color: #5DD9E8 !important;
+    filter: drop-shadow(0 0 6px rgba(93, 217, 232, 0.5)) drop-shadow(0 1px 2px rgba(0,0,0,0.4)) !important;
+    text-shadow: 0 0 8px rgba(93, 217, 232, 0.45) !important;
 }
 .nav-game .nav-game__item[data-tab="messages"] .nav-game__icon {
-    color: #FF00FF !important;
-    filter: drop-shadow(0 0 15px #FF00FF) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
-    text-shadow: 0 0 20px #FF00FF, 0 0 8px rgba(255,0,255,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
+    color: #E85DD8 !important;
+    filter: drop-shadow(0 0 6px rgba(232, 93, 216, 0.5)) drop-shadow(0 1px 2px rgba(0,0,0,0.4)) !important;
+    text-shadow: 0 0 8px rgba(232, 93, 216, 0.45) !important;
 }
 .nav-game .nav-game__item[data-tab="boutique"] .nav-game__icon {
-    color: #39FF14 !important;
-    filter: drop-shadow(0 0 15px #39FF14) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
-    text-shadow: 0 0 20px #39FF14, 0 0 8px rgba(57,255,20,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
+    color: #6EE86A !important;
+    filter: drop-shadow(0 0 6px rgba(110, 232, 106, 0.5)) drop-shadow(0 1px 2px rgba(0,0,0,0.4)) !important;
+    text-shadow: 0 0 8px rgba(110, 232, 106, 0.45) !important;
 }
 .nav-game .nav-game__item[data-tab="calendrier"] .nav-game__icon {
-    color: #FF4500 !important;
-    filter: drop-shadow(0 0 15px #FF4500) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
-    text-shadow: 0 0 20px #FF4500, 0 0 8px rgba(255,69,0,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
+    color: #E88A5D !important;
+    filter: drop-shadow(0 0 6px rgba(232, 138, 93, 0.5)) drop-shadow(0 1px 2px rgba(0,0,0,0.4)) !important;
+    text-shadow: 0 0 8px rgba(232, 138, 93, 0.45) !important;
 }
 .nav-game .nav-game__item[data-tab="classement"] .nav-game__icon {
-    color: #FF2400 !important;
-    filter: drop-shadow(0 0 15px #FF2400) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
-    text-shadow: 0 0 20px #FF2400, 0 0 8px rgba(255,36,0,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
+    color: #E85D5D !important;
+    filter: drop-shadow(0 0 6px rgba(232, 93, 93, 0.5)) drop-shadow(0 1px 2px rgba(0,0,0,0.4)) !important;
+    text-shadow: 0 0 8px rgba(232, 93, 93, 0.45) !important;
 }
 
 .nav-game .nav-game__item.active .nav-game__icon {
-    filter: drop-shadow(0 0 15px currentColor) drop-shadow(0 0 22px currentColor) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
-    text-shadow: 0 0 20px currentColor, 0 0 12px currentColor, 0 2px 2px rgba(0,0,0,0.6) !important;
+    filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 1px 2px rgba(0,0,0,0.4)) !important;
+    text-shadow: 0 0 10px currentColor !important;
 }
 
 @media (max-width: 768px) {
