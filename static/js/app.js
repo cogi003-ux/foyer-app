@@ -490,6 +490,12 @@ function initializeTabs() {
             const path = TAB_TO_PATH[targetTab];
             if (path != null) history.pushState({ tab: targetTab }, '', path);
 
+            /* Odyssée Galactique : onde de choc + rotation 360° sur l’icône cliquée */
+            if (btn.classList.contains('nav-game__item')) {
+                btn.classList.add('nav-game__item--clicked');
+                setTimeout(() => btn.classList.remove('nav-game__item--clicked'), 600);
+            }
+
             await saveDraftMessageIfAny();
 
             runPortalTransition(() => {

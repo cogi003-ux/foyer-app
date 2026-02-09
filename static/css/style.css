@@ -35,93 +35,156 @@ body {
     background-color: #050510;
 }
 
-/* ——— Moteur de Galaxie CSS (3 couches organiques + vignette) ——— */
+/* ——— Odyssée Galactique : Nébuleuse dynamique (3 couches + poussière magique) ——— */
 .galaxy-engine {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -2;
-    pointer-events: none;
-    overflow: hidden;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: -2 !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
 }
 
 .galaxy-layer {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -1;
-    will-change: transform;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: -1 !important;
+    will-change: transform !important;
 }
 
-/* Couche 1 — Le Cœur : radial indigo qui bouge lentement */
+/* Couche 1 — Indigo #2D006E : radial géant qui danse */
 .galaxy-layer--heart {
     background: radial-gradient(
-        ellipse 120% 100% at 50% 50%,
-        rgba(75, 0, 130, 0.85) 0%,
-        rgba(75, 0, 130, 0.4) 35%,
+        ellipse 140% 120% at 50% 50%,
+        rgba(45, 0, 110, 0.9) 0%,
+        rgba(45, 0, 110, 0.5) 40%,
         transparent 70%
-    );
-    mix-blend-mode: screen;
-    animation: galaxy-heart 45s ease-in-out infinite;
+    ) !important;
+    filter: blur(100px) !important;
+    -webkit-filter: blur(100px) !important;
+    mix-blend-mode: screen !important;
+    animation: galaxy-dance-1 30s ease-in-out infinite !important;
 }
 
-@keyframes galaxy-heart {
-    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
-    25% { transform: translate(3%, -2%) rotate(2deg) scale(1.08); }
-    50% { transform: translate(-4%, 1%) rotate(-1deg) scale(0.96); }
-    75% { transform: translate(2%, 3%) rotate(1deg) scale(1.05); }
-}
-
-/* Couche 2 — La Magie : formes floues magenta/cyan qui tournent et se déforment */
+/* Couche 2 — Pourpre #800080 : radial géant qui danse */
 .galaxy-layer--magic {
-    background: conic-gradient(
-        from 0deg at 50% 50%,
-        rgba(255, 0, 127, 0.3) 0deg,
-        rgba(0, 255, 255, 0.25) 120deg,
-        rgba(255, 0, 127, 0.3) 240deg,
-        rgba(0, 255, 255, 0.25) 360deg
-    );
-    filter: blur(80px);
-    -webkit-filter: blur(80px);
-    mix-blend-mode: overlay;
-    animation: galaxy-magic 35s ease-in-out infinite;
+    background: radial-gradient(
+        ellipse 120% 140% at 60% 40%,
+        rgba(128, 0, 128, 0.75) 0%,
+        rgba(128, 0, 128, 0.35) 45%,
+        transparent 70%
+    ) !important;
+    filter: blur(100px) !important;
+    -webkit-filter: blur(100px) !important;
+    mix-blend-mode: screen !important;
+    animation: galaxy-dance-2 30s ease-in-out infinite !important;
 }
 
-@keyframes galaxy-magic {
-    0%, 100% { transform: translate(-2%, 1%) rotate(0deg) scale(1.1); }
-    33% { transform: translate(4%, -3%) rotate(120deg) scale(1.2); }
-    66% { transform: translate(-3%, 2%) rotate(240deg) scale(0.95); }
+/* Couche 3 — Bleu profond #004E92 : radial géant qui danse */
+.galaxy-layer--deep {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: -1 !important;
+    will-change: transform !important;
+    background: radial-gradient(
+        ellipse 130% 130% at 40% 60%,
+        rgba(0, 78, 146, 0.7) 0%,
+        rgba(0, 78, 146, 0.3) 40%,
+        transparent 65%
+    ) !important;
+    filter: blur(100px) !important;
+    -webkit-filter: blur(100px) !important;
+    mix-blend-mode: screen !important;
+    animation: galaxy-dance-3 30s ease-in-out infinite !important;
 }
 
-/* Couche 3 — Poussière d'étoiles : motif de points qui scintille */
+@keyframes galaxy-dance-1 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    25% { transform: translate(5%, -4%) rotate(3deg) scale(1.12); }
+    50% { transform: translate(-6%, 3%) rotate(-2deg) scale(0.94); }
+    75% { transform: translate(3%, 5%) rotate(2deg) scale(1.06); }
+}
+
+@keyframes galaxy-dance-2 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1.1); }
+    33% { transform: translate(-4%, 4%) rotate(120deg) scale(1.18); }
+    66% { transform: translate(4%, -3%) rotate(240deg) scale(0.96); }
+}
+
+@keyframes galaxy-dance-3 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1.05); }
+    50% { transform: translate(-3%, -5%) rotate(180deg) scale(1.15); }
+}
+
+/* Couche 4 — Poussière magique : petits points blancs qui scintillent à rythmes différents */
 .galaxy-layer--stardust {
-    background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
-    background-size: 24px 24px;
-    background-position: 0 0, 12px 12px;
-    mix-blend-mode: screen;
-    animation: galaxy-stardust 8s ease-in-out infinite;
+    background-image:
+        radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1px),
+        radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1px),
+        radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px) !important;
+    background-size: 32px 32px, 28px 28px, 24px 24px !important;
+    background-position: 0 0, 11px 11px, 6px 18px !important;
+    mix-blend-mode: screen !important;
+    animation: galaxy-stardust 8s ease-in-out infinite !important;
 }
 
 @keyframes galaxy-stardust {
-    0%, 100% { opacity: 0.6; transform: translate(0, 0) scale(1); }
+    0%, 100% { opacity: 0.35; transform: translate(0, 0) scale(1); }
     50% { opacity: 1; transform: translate(1%, -1%) scale(1.02); }
+}
+
+/* Poussière magique — rythmes multiples (délais différents via pseudo-éléments ou couche supplémentaire) */
+.galaxy-layer--stardust::before {
+    content: '' !important;
+    position: absolute !important;
+    inset: 0 !important;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1px) !important;
+    background-size: 20px 20px !important;
+    background-position: 10px 0, 0 10px !important;
+    animation: galaxy-twinkle-1 4s ease-in-out infinite !important;
+    pointer-events: none !important;
+}
+
+.galaxy-layer--stardust::after {
+    content: '' !important;
+    position: absolute !important;
+    inset: 0 !important;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px) !important;
+    background-size: 26px 26px !important;
+    background-position: 13px 13px !important;
+    animation: galaxy-twinkle-2 6s ease-in-out infinite 0.5s !important;
+    pointer-events: none !important;
+}
+
+@keyframes galaxy-twinkle-1 {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+}
+
+@keyframes galaxy-twinkle-2 {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.9; }
 }
 
 /* Vignette : ombre interne pour garder le focus au centre */
 .galaxy-vignette {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    pointer-events: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
     box-shadow: inset 0 0 25vmin rgba(5, 5, 16, 0.85),
-                inset 0 0 50vmin rgba(5, 5, 16, 0.5);
+                inset 0 0 50vmin rgba(5, 5, 16, 0.5) !important;
 }
 
 /* ——— Galaxie Canvas (dessin par-dessus le moteur CSS, fond transparent) ——— */
@@ -1763,48 +1826,78 @@ body.theme-enfant .cosmic-bg {
     text-shadow: var(--game-text-shadow);
 }
 
-/* ========== NAVBAR JEU MOBILE (6 onglets, couleurs néon, bounce) ========== */
+/* ========== NAVBAR ODYSSÉE GALACTIQUE — Artefacts magiques (relief + lueur) ========== */
 .nav-game {
     position: fixed !important;
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    z-index: 100;
+    z-index: 100 !important;
     display: flex !important;
     justify-content: space-around !important;
-    align-items: center;
-    gap: 0;
+    align-items: center !important;
+    gap: 0 !important;
     margin: 0 !important;
     padding: 10px 4px !important;
     padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
     background-color: rgba(0, 0, 0, 0.85) !important;
     backdrop-filter: blur(15px) !important;
     -webkit-backdrop-filter: blur(15px) !important;
-    border-top: 1px solid rgba(255, 215, 0, 0.3);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(255, 215, 0, 0.35) !important;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5) !important;
 }
+
 .nav-game .nav-game__item {
+    position: relative !important;
     display: flex !important;
     flex: 1 !important;
     justify-content: center !important;
     align-items: center !important;
-    min-height: 52px;
+    min-height: 52px !important;
     padding: 0 !important;
     margin: 0 !important;
     background: none !important;
     border: none !important;
     text-decoration: none !important;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
+    cursor: pointer !important;
+    -webkit-tap-highlight-color: transparent !important;
+    overflow: visible !important;
 }
-.nav-game .nav-game__item:active .nav-game__icon {
-    animation: nav-bounce 0.4s ease !important;
+
+/* Onde de choc au clic (cercle qui s'étend et disparaît) */
+.nav-game .nav-game__item::after {
+    content: '' !important;
+    position: absolute !important;
+    inset: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    margin: -10px 0 0 -10px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.4) !important;
+    transform: scale(0) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
-@keyframes nav-bounce {
-    0%, 100% { transform: scale(1); }
-    40% { transform: scale(1.25); }
-    70% { transform: scale(0.95); }
+
+.nav-game .nav-game__item.nav-game__item--clicked::after {
+    animation: nav-shockwave 0.6s ease-out forwards !important;
 }
+
+@keyframes nav-shockwave {
+    0% { transform: scale(0); opacity: 0.9; }
+    100% { transform: scale(4); opacity: 0; }
+}
+
+/* Rotation 360° rapide au clic */
+.nav-game .nav-game__item.nav-game__item--clicked .nav-game__icon {
+    animation: nav-spin 0.5s ease-out forwards !important;
+}
+
+@keyframes nav-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 .nav-game__icon {
     font-size: 32px !important;
     width: 32px !important;
@@ -1812,34 +1905,46 @@ body.theme-enfant .cosmic-bg {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    mix-blend-mode: screen !important;
+    position: relative !important;
+    z-index: 1 !important;
 }
-/* Couleurs néon par onglet — runes magiques */
+
+/* Artefacts magiques : lueur interne + externe (drop-shadow 15px + text-shadow 20px) + relief */
 .nav-game .nav-game__item[data-tab="dashboard"] .nav-game__icon {
     color: #FFD700 !important;
-    filter: drop-shadow(0 0 10px #FFD700) !important;
+    filter: drop-shadow(0 0 15px #FFD700) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
+    text-shadow: 0 0 20px #FFD700, 0 0 8px rgba(255,215,0,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
 }
 .nav-game .nav-game__item[data-tab="taches"] .nav-game__icon {
-    color: #00BFFF !important;
-    filter: drop-shadow(0 0 10px #00BFFF) !important;
+    color: #00FFFF !important;
+    filter: drop-shadow(0 0 15px #00FFFF) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
+    text-shadow: 0 0 20px #00FFFF, 0 0 8px rgba(0,255,255,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
 }
 .nav-game .nav-game__item[data-tab="messages"] .nav-game__icon {
-    color: #BF00FF !important;
-    filter: drop-shadow(0 0 10px #BF00FF) !important;
+    color: #FF00FF !important;
+    filter: drop-shadow(0 0 15px #FF00FF) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
+    text-shadow: 0 0 20px #FF00FF, 0 0 8px rgba(255,0,255,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
 }
 .nav-game .nav-game__item[data-tab="boutique"] .nav-game__icon {
-    color: #32CD32 !important;
-    filter: drop-shadow(0 0 10px #32CD32) !important;
+    color: #39FF14 !important;
+    filter: drop-shadow(0 0 15px #39FF14) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
+    text-shadow: 0 0 20px #39FF14, 0 0 8px rgba(57,255,20,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
 }
 .nav-game .nav-game__item[data-tab="calendrier"] .nav-game__icon {
-    color: #FF8C00 !important;
-    filter: drop-shadow(0 0 10px #FF8C00) !important;
+    color: #FF4500 !important;
+    filter: drop-shadow(0 0 15px #FF4500) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
+    text-shadow: 0 0 20px #FF4500, 0 0 8px rgba(255,69,0,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
 }
 .nav-game .nav-game__item[data-tab="classement"] .nav-game__icon {
-    color: #FF0000 !important;
-    filter: drop-shadow(0 0 10px #FF0000) !important;
+    color: #FF2400 !important;
+    filter: drop-shadow(0 0 15px #FF2400) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
+    text-shadow: 0 0 20px #FF2400, 0 0 8px rgba(255,36,0,0.8), 0 2px 2px rgba(0,0,0,0.6) !important;
 }
+
 .nav-game .nav-game__item.active .nav-game__icon {
-    filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 16px currentColor) !important;
+    filter: drop-shadow(0 0 15px currentColor) drop-shadow(0 0 22px currentColor) drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
+    text-shadow: 0 0 20px currentColor, 0 0 12px currentColor, 0 2px 2px rgba(0,0,0,0.6) !important;
 }
 
 @media (max-width: 768px) {
