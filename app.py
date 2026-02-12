@@ -207,30 +207,40 @@ def get_messages():
             'error': str(e)
         }), 500
 
-MESSAGE_IMAGES_BUCKET = 'message-images'
+# Bucket Supabase pour les photos (messages, etc.)
+PHOTOS_BUCKET = 'photos'
+MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # 5 Mo
 
 @app.route('/api/upload-message-image', methods=['POST'])
 def upload_message_image():
-    """Upload une image vers Supabase Storage, retourne l'URL publique (sans rechargement SPA)."""
+    """Upload une image vers le bucket Supabase 'photos'. Retourne l'URL publique. Gère taille max et erreurs."""
     try:
         file = request.files.get('image') or request.files.get('file')
         if not file or not file.filename:
             return jsonify({'success': False, 'error': 'Aucun fichier image'}), 400
         ext = os.path.splitext(file.filename)[1].lower() or '.jpg'
         if ext not in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
-            return jsonify({'success': False, 'error': 'Format image non autorisé'}), 400
-        path = f"{uuid.uuid4().hex}{ext}"
+            return jsonify({'success': False, 'error': 'Format image non autorisé (jpg, png, gif, webp)'}), 400
         content = file.read()
+        if len(content) > MAX_IMAGE_SIZE_BYTES:
+            return jsonify({
+                'success': False,
+                'error': f'Fichier trop lourd (max {MAX_IMAGE_SIZE_BYTES // (1024*1024)} Mo). Choisis une image plus légère.'
+            }), 413
+        path = f"{uuid.uuid4().hex}{ext}"
         client = get_supabase_client()
         if not client:
             return jsonify({'success': False, 'error': 'Supabase non configuré'}), 500
-        bucket = client.storage.from_(MESSAGE_IMAGES_BUCKET)
+        bucket = client.storage.from_(PHOTOS_BUCKET)
         bucket.upload(path, content)
-        public_url = f"{os.environ.get('SUPABASE_URL')}/storage/v1/object/public/{MESSAGE_IMAGES_BUCKET}/{path}"
+        public_url = f"{os.environ.get('SUPABASE_URL')}/storage/v1/object/public/{PHOTOS_BUCKET}/{path}"
         return jsonify({'success': True, 'url': public_url})
     except Exception as e:
         print(f"[ERROR] upload_message_image: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        err_msg = str(e).strip()
+        if 'Payload too large' in err_msg or 'size' in err_msg.lower():
+            return jsonify({'success': False, 'error': 'Fichier trop lourd. Réduis la taille de l\'image.'}), 413
+        return jsonify({'success': False, 'error': err_msg or 'Erreur lors de l\'upload'}), 500
 
 @app.route('/api/messages', methods=['POST'])
 def add_message():
@@ -372,6 +382,16 @@ def get_attente_validation_api():
         return jsonify({'success': True, 'validations': validations})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/badge-count', methods=['GET'])
+def get_badge_count_api():
+    """Compteur pour le badge PWA : tâches à valider (+ futurs messages non lus). Léger, pour polling."""
+    try:
+        validations = get_attente_validation()
+        count = len(validations) if validations else 0
+        return jsonify({'success': True, 'count': count})
+    except Exception as e:
+        return jsonify({'success': False, 'count': 0, 'error': str(e)}), 500
 
 @app.route('/api/attente-validation', methods=['POST'])
 def add_attente_validation_api():

@@ -304,6 +304,9 @@ async function initializeApp() {
     // Démarrer la surveillance des changements (nouveaux messages / tâches) toutes les 60 s
     startNotificationPolling();
 
+    // Badge PWA (bulle rouge sur l’icône) : mise à jour au chargement + polling + à l’ouverture de l’onglet
+    startBadgePolling();
+
     const capturePhotoInput = document.getElementById('capture-photo');
     if (capturePhotoInput) {
         capturePhotoInput.addEventListener('change', handleCapturePhotoChange);
@@ -1265,6 +1268,11 @@ function initMessagePhotoPicker() {
                 body: formData
             });
             const data = await res.json().catch(() => ({}));
+            if (res.status === 413) {
+                showToast(data.error || 'Fichier trop lourd (max 5 Mo). Choisis une image plus légère.', 'error');
+                input.value = '';
+                return;
+            }
             if (data.success && data.url) {
                 window._pendingMessageImageUrl = data.url;
                 preview.innerHTML = `
@@ -2576,6 +2584,7 @@ async function loadAttenteValidation() {
                 waitingMsg.style.display = 'none';
             }, 300);
         }
+        updateAppBadge();
         return;
     }
     
@@ -2599,6 +2608,7 @@ async function loadAttenteValidation() {
                 }, 300);
             }
         }
+        updateAppBadge();
     } catch (error) {
         console.error('Erreur lors du chargement des validations:', error);
         if (waitingMsg) {
@@ -2608,5 +2618,33 @@ async function loadAttenteValidation() {
                 waitingMsg.style.display = 'none';
             }, 300);
         }
+        updateAppBadge();
     }
+}
+
+// ——— Badge PWA (icône app : bulle rouge avec chiffre) ——— //
+const BADGE_POLL_INTERVAL_MS = 60 * 1000; // 1 min
+
+async function updateAppBadge() {
+    if (!navigator.setAppBadge) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/badge-count`);
+        const data = await res.json().catch(() => ({}));
+        const count = (data.success && typeof data.count === 'number') ? Math.max(0, data.count) : 0;
+        if (count > 0) {
+            await navigator.setAppBadge(count);
+        } else {
+            if (navigator.clearAppBadge) await navigator.clearAppBadge();
+        }
+    } catch (e) {
+        if (navigator.clearAppBadge) await navigator.clearAppBadge();
+    }
+}
+
+function startBadgePolling() {
+    updateAppBadge();
+    setInterval(updateAppBadge, BADGE_POLL_INTERVAL_MS);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') updateAppBadge();
+    });
 }
