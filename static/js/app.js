@@ -2233,6 +2233,8 @@ async function fetchBudgetData(year, month) {
     return data.success ? { items: data.items || [], solde_restant: data.solde_restant != null ? data.solde_restant : 0 } : null;
 }
 
+let _budgetLoadKey = null;
+
 async function loadBudget(backgroundRefresh = false) {
     if (!appData.isParent) return;
     const { year, month } = getBudgetMonthYear();
@@ -2252,7 +2254,11 @@ async function loadBudget(backgroundRefresh = false) {
         return;
     }
 
-    if (!backgroundRefresh) showBudgetSkeleton();
+    if (!backgroundRefresh) {
+        if (_budgetLoadKey === key) return;
+        _budgetLoadKey = key;
+        showBudgetSkeleton();
+    }
 
     try {
         const data = await fetchBudgetData(year, month);
@@ -2267,20 +2273,23 @@ async function loadBudget(backgroundRefresh = false) {
         showToast('Impossible de charger le budget', 'error');
         displayBudget([], 0);
     } finally {
-        preloadNextBudgetMonth();
+        _budgetLoadKey = null;
     }
+    // Préchargement désactivé temporairement pour stabiliser
+    // preloadNextBudgetMonth();
 }
 
-function preloadNextBudgetMonth() {
-    const { year, month } = getBudgetMonthYear();
-    let nextYear = year, nextMonth = month + 1;
-    if (nextMonth > 12) { nextMonth = 1; nextYear += 1; }
-    const key = budgetCacheKey(nextYear, nextMonth);
-    if (appData.budgetCache[key]) return;
-    fetchBudgetData(nextYear, nextMonth).then(data => {
-        if (data) appData.budgetCache[key] = data;
-    }).catch(() => {});
-}
+// Préchargement du mois suivant : désactivé temporairement pour éviter timeouts
+// function preloadNextBudgetMonth() {
+//     const { year, month } = getBudgetMonthYear();
+//     let nextYear = year, nextMonth = month + 1;
+//     if (nextMonth > 12) { nextMonth = 1; nextYear += 1; }
+//     const key = budgetCacheKey(nextYear, nextMonth);
+//     if (appData.budgetCache[key]) return;
+//     fetchBudgetData(nextYear, nextMonth).then(data => {
+//         if (data) appData.budgetCache[key] = data;
+//     }).catch(() => {});
+// }
 
 function invalidateBudgetCacheForMonth(year, month) {
     delete appData.budgetCache[budgetCacheKey(year, month)];

@@ -957,13 +957,15 @@ def get_all_budget_familial(annee: Optional[int] = None, mois: Optional[int] = N
                 if not parsed:
                     continue
                 ry, rm, rd = parsed
+                diff_months = (annee * 12 + mois) - (ry * 12 + rm)
+                if diff_months < 0 or diff_months > 12:
+                    continue
                 freq = (r.get('frequence') or '').lower()
                 if freq == 'mensuel':
                     if (annee, mois) < (ry, rm):
                         continue
                 elif freq == 'trimestriel':
-                    diff_months = (annee * 12 + mois) - (ry * 12 + rm)
-                    if diff_months < 0 or diff_months % 3 != 0:
+                    if diff_months % 3 != 0:
                         continue
                 else:
                     continue

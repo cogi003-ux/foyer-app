@@ -492,6 +492,7 @@ def get_budget():
         today = date.today()
         annee = request.args.get('annee', type=int) or today.year
         mois = request.args.get('mois', type=int) or today.month
+        print("Chargement du budget pour :", mois, annee)
         items = get_all_budget_familial(annee, mois)
         revenus = sum(float(r.get('montant', 0) or 0) for r in items if (r.get('type') or '').lower() == 'revenu')
         depenses_payees = sum(float(r.get('montant', 0) or 0) for r in items if (r.get('type') or '').lower() == 'depense' and (r.get('statut') or '').lower() == 'paye')
