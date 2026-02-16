@@ -2175,6 +2175,11 @@ body.theme-enfant .cosmic-bg {
 }
 
 /* ——— Gestion du Budget (parents) ——— */
+#budget .budget-card {
+    max-width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
 .budget-card h2 {
     margin-bottom: 4px;
 }
@@ -2190,6 +2195,11 @@ body.theme-enfant .cosmic-bg {
     background: rgba(0,0,0,0.35);
     border: 2px solid rgba(255,215,0,0.4);
     border-radius: 20px;
+}
+.budget-solde-block .budget-solde,
+.budget-solde-block .budget-solde-label {
+    text-align: center;
+    display: block;
 }
 .budget-solde {
     font-size: clamp(2.2rem, 8vw, 3.8rem);
@@ -2222,11 +2232,28 @@ body.theme-enfant .cosmic-bg {
     flex-wrap: wrap;
 }
 @media (max-width: 768px) {
-    .budget-form-row {
-        grid-template-columns: 1fr 1fr;
+    #budget .budget-card {
+        padding-left: 15px;
+        padding-right: 15px;
     }
-    .budget-form-row .form-group:nth-child(n+4),
+    .budget-form-row {
+        grid-template-columns: 1fr;
+    }
+    .budget-form-row .form-group,
     .budget-form-row button { grid-column: 1 / -1; }
+    .budget-form-row .form-group input,
+    .budget-form-row .form-group select {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .budget-form-row button {
+        width: 100%;
+        min-height: 48px;
+        font-size: 1.05rem;
+        display: block;
+        margin: 0 auto;
+    }
 }
 .budget-table-wrap {
     overflow-x: auto;
