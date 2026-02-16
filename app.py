@@ -527,7 +527,7 @@ def add_budget():
 @app.route('/api/budget/<int:item_id>', methods=['PATCH'])
 @require_parent_auth
 def update_budget(item_id):
-    """Modifie le statut (paye/prevu) ou le montant d'une entrée."""
+    """Modifie le statut (paye/prevu), le montant ou la frequence (une_fois, mensuel, trimestriel) d'une entrée."""
     try:
         data = request.json
         if not data:

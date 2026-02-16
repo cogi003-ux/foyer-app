@@ -2165,10 +2165,11 @@ const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juill
 
 function getBudgetMonthYear() {
     const now = new Date();
-    return {
-        year: appData.budgetYear != null ? appData.budgetYear : now.getFullYear(),
-        month: appData.budgetMonth != null ? appData.budgetMonth : (now.getMonth() + 1)
-    };
+    let year = appData.budgetYear != null ? parseInt(appData.budgetYear, 10) : now.getFullYear();
+    let month = appData.budgetMonth != null ? parseInt(appData.budgetMonth, 10) : (now.getMonth() + 1);
+    if (isNaN(year)) year = now.getFullYear();
+    if (isNaN(month) || month < 1 || month > 12) month = now.getMonth() + 1;
+    return { year, month };
 }
 
 function updateBudgetMonthLabel() {
@@ -2186,20 +2187,14 @@ function initBudgetMonthSelector() {
     if (appData.budgetMonth == null) appData.budgetMonth = now.getMonth() + 1;
     updateBudgetMonthLabel();
     prev.addEventListener('click', () => {
-        appData.budgetMonth--;
-        if (appData.budgetMonth < 1) {
-            appData.budgetMonth = 12;
-            appData.budgetYear--;
-        }
+        appData.budgetMonth = (appData.budgetMonth - 1) || 12;
+        if (appData.budgetMonth === 12) appData.budgetYear--;
         updateBudgetMonthLabel();
         loadBudget();
     });
     next.addEventListener('click', () => {
-        appData.budgetMonth++;
-        if (appData.budgetMonth > 12) {
-            appData.budgetMonth = 1;
-            appData.budgetYear++;
-        }
+        appData.budgetMonth = appData.budgetMonth === 12 ? 1 : appData.budgetMonth + 1;
+        if (appData.budgetMonth === 1) appData.budgetYear++;
         updateBudgetMonthLabel();
         loadBudget();
     });
@@ -2256,14 +2251,22 @@ function displayBudget(items, soldeRestant) {
         if (isViewingCurrentMonth) return '(mois en cours)';
         return '(sans date)';
     }
+    function freqSelect(item) {
+        const f = (item.frequence || 'une_fois').toLowerCase();
+        return `<select class="budget-select-frequence" data-item-id="${item.id}" data-prev-value="${f}" onchange="updateBudgetFrequence(${item.id}, this.value, this)" aria-label="Fréquence">
+            <option value="une_fois" ${f === 'une_fois' ? ' selected' : ''}>Une fois</option>
+            <option value="mensuel" ${f === 'mensuel' ? ' selected' : ''}>Mensuel</option>
+            <option value="trimestriel" ${f === 'trimestriel' ? ' selected' : ''}>Trimestriel</option>
+        </select>`;
+    }
     function cellRevenu(item) {
         if (!item) return '<span class="budget-cell-empty">—</span>';
         const montant = formatMontantBE(item.montant);
         const dateStr = formatDateLabel(item);
-        const freqLabel = item.frequence === 'mensuel' ? ' <small class="budget-recurrent">(mensuel)</small>' : item.frequence === 'trimestriel' ? ' <small class="budget-recurrent">(trimestriel)</small>' : '';
         return `<div class="budget-cell-content">
-            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${freqLabel}</span>
+            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small></span>
             <span class="budget-item-montant revenu">+ ${montant} €</span>
+            ${freqSelect(item)}
             <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
         </div>`;
     }
@@ -2272,13 +2275,13 @@ function displayBudget(items, soldeRestant) {
         const montant = formatMontantBE(item.montant);
         const isPaye = (item.statut || '').toLowerCase() === 'paye';
         const dateStr = formatDateLabel(item);
-        const freqLabel = item.frequence === 'mensuel' ? ' <small class="budget-recurrent">(mensuel)</small>' : item.frequence === 'trimestriel' ? ' <small class="budget-recurrent">(trimestriel)</small>' : '';
         const payeBtn = !isPaye
             ? `<button type="button" class="btn-budget-paye" onclick="markAsPayeBudget(${item.id})">Marquer comme payé</button>`
             : '<span class="budget-item-paye">Payé</span>';
         return `<div class="budget-cell-content ${isPaye ? 'budget-item-paye' : ''}">
-            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${freqLabel}</span>
+            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small></span>
             <span class="budget-item-montant depense">− ${montant} €</span>
+            ${freqSelect(item)}
             <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
             ${payeBtn}
         </div>`;
@@ -2372,6 +2375,32 @@ async function deleteBudgetItem(itemId) {
     } catch (err) {
         console.error('deleteBudgetItem:', err);
         showToast('Erreur réseau', 'error');
+    }
+}
+
+async function updateBudgetFrequence(itemId, value, selectEl) {
+    if (!appData.isParent || !selectEl) return;
+    const prevValue = selectEl.dataset.prevValue || '';
+    try {
+        const response = await fetch(`${API_BASE}/api/budget/${itemId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frequence: value })
+        });
+        if (response.ok) {
+            selectEl.dataset.prevValue = value;
+            selectEl.classList.add('budget-frequence-saved');
+            showToast('Fréquence enregistrée', 'success');
+            setTimeout(() => selectEl.classList.remove('budget-frequence-saved'), 1500);
+        } else {
+            const data = await response.json().catch(() => ({}));
+            showToast(data.error || 'Erreur', 'error');
+            selectEl.value = prevValue;
+        }
+    } catch (err) {
+        console.error('updateBudgetFrequence:', err);
+        showToast('Erreur réseau', 'error');
+        selectEl.value = prevValue;
     }
 }
 

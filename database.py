@@ -893,7 +893,7 @@ def add_budget_familial(data: Dict) -> tuple[bool, str]:
 
 
 def update_budget_familial(item_id: int, update_data: Dict) -> bool:
-    """Met à jour une entrée budget : statut (paye/prevu) et/ou montant."""
+    """Met à jour une entrée budget : statut (paye/prevu), montant, nom, date_echeance ou frequence (une_fois, mensuel, trimestriel)."""
     client = get_supabase_client()
     if not client:
         return False

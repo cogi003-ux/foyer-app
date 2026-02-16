@@ -2176,9 +2176,11 @@ body.theme-enfant .cosmic-bg {
 
 /* ——— Gestion du Budget (parents) ——— */
 #budget.budget-section {
-    padding-bottom: 100px;
+    padding-bottom: 200px;
+    padding-bottom: max(200px, calc(200px + env(safe-area-inset-bottom)));
     overflow-y: auto;
     box-sizing: border-box;
+    width: 100%;
 }
 #budget .budget-card {
     max-width: 100%;
@@ -2268,9 +2270,22 @@ body.theme-enfant .cosmic-bg {
     flex-wrap: wrap;
 }
 @media (max-width: 768px) {
+    #budget.budget-section {
+        padding-left: max(15px, env(safe-area-inset-left));
+        padding-right: max(15px, env(safe-area-inset-right));
+    }
     #budget .budget-card {
         padding-left: 15px;
         padding-right: 15px;
+        margin-left: auto;
+        margin-right: auto;
+        width: 100%;
+    }
+    .budget-form,
+    .budget-table-wrap {
+        margin-left: auto;
+        margin-right: auto;
+        width: 100%;
     }
     .budget-form-row {
         grid-template-columns: 1fr;
@@ -2344,6 +2359,42 @@ body.theme-enfant .cosmic-bg {
 .budget-cell-content .budget-item-montant.revenu { color: #81c784; }
 .budget-cell-content .budget-item-montant.depense { color: #e57373; }
 .budget-cell-content .budget-recurrent { color: var(--text-secondary); font-weight: 600; }
+.budget-select-frequence {
+    flex-shrink: 0;
+    min-width: 0;
+    width: 90px;
+    max-width: 100px;
+    padding: 4px 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23fff' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    padding-right: 22px;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.budget-select-frequence:hover {
+    border-color: rgba(255,255,255,0.5);
+}
+.budget-select-frequence.budget-frequence-saved {
+    border-color: #81c784;
+    background-color: rgba(129, 199, 132, 0.2);
+    box-shadow: 0 0 0 2px rgba(129, 199, 132, 0.3);
+}
+@media (max-width: 768px) {
+    .budget-select-frequence {
+        width: 82px;
+        font-size: 0.7rem;
+        padding: 6px 20px 6px 6px;
+        min-height: 36px;
+    }
+}
 .budget-btn-delete {
     flex-shrink: 0;
     min-width: 44px;
