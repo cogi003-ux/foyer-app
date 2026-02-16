@@ -2223,6 +2223,7 @@ async function loadBudget() {
             throw new Error('Erreur chargement budget');
         }
         const data = await response.json();
+        console.log(data);
         if (data.success) {
             displayBudget(data.items || [], data.solde_restant != null ? data.solde_restant : 0);
         }
@@ -2240,17 +2241,28 @@ function displayBudget(items, soldeRestant) {
 
     soldeEl.textContent = formatMontantBE(soldeRestant) + ' €';
 
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const { year: viewYear, month: viewMonth } = getBudgetMonthYear();
+    const isViewingCurrentMonth = viewYear === currentYear && viewMonth === currentMonth;
+
     const revenus = items.filter(i => (i.type || '').toLowerCase() === 'revenu');
     const depenses = items.filter(i => (i.type || '').toLowerCase() === 'depense');
     const maxRows = Math.max(revenus.length, depenses.length, 1);
 
+    function formatDateLabel(item) {
+        if (item.date_echeance) return new Date(item.date_echeance).toLocaleDateString('fr-BE');
+        if (isViewingCurrentMonth) return '(mois en cours)';
+        return '(sans date)';
+    }
     function cellRevenu(item) {
         if (!item) return '<span class="budget-cell-empty">—</span>';
         const montant = formatMontantBE(item.montant);
-        const dateStr = item.date_echeance ? new Date(item.date_echeance).toLocaleDateString('fr-BE') : '';
+        const dateStr = formatDateLabel(item);
         const recur = item.est_recurrent ? ' <small class="budget-recurrent">(récurrent)</small>' : '';
         return `<div class="budget-cell-content">
-            <span class="budget-item-nom">${escapeHtml(item.nom)}${dateStr ? ' <small>(' + dateStr + ')</small>' : ''}${recur}</span>
+            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${recur}</span>
             <span class="budget-item-montant revenu">+ ${montant} €</span>
         </div>`;
     }
@@ -2258,13 +2270,13 @@ function displayBudget(items, soldeRestant) {
         if (!item) return '<span class="budget-cell-empty">—</span>';
         const montant = formatMontantBE(item.montant);
         const isPaye = (item.statut || '').toLowerCase() === 'paye';
-        const dateStr = item.date_echeance ? new Date(item.date_echeance).toLocaleDateString('fr-BE') : '';
+        const dateStr = formatDateLabel(item);
         const recur = item.est_recurrent ? ' <small class="budget-recurrent">(récurrent)</small>' : '';
         const payeBtn = !isPaye
             ? `<button type="button" class="btn-budget-paye" onclick="markAsPayeBudget(${item.id})">Marquer comme payé</button>`
             : '<span class="budget-item-paye">Payé</span>';
         return `<div class="budget-cell-content ${isPaye ? 'budget-item-paye' : ''}">
-            <span class="budget-item-nom">${escapeHtml(item.nom)}${dateStr ? ' <small>(' + dateStr + ')</small>' : ''}${recur}</span>
+            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${recur}</span>
             <span class="budget-item-montant depense">− ${montant} €</span>
             ${payeBtn}
         </div>`;

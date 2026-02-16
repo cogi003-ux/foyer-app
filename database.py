@@ -806,19 +806,32 @@ def get_all_budget_familial(annee: Optional[int] = None, mois: Optional[int] = N
     """
     Récupère les entrées du budget familial.
     Si annee et mois sont fournis, filtre par date_echeance dans ce mois.
+    Pour le mois en cours, inclut aussi les entrées sans date (date_echeance NULL) pour ne pas les "perdre".
     """
     client = get_supabase_client()
     if not client:
         return []
     try:
-        query = client.table(TABLE_BUDGET_FAMILIAL).select('*')
+        from calendar import monthrange
+        now = datetime.now()
         if annee is not None and mois is not None:
-            from calendar import monthrange
             last = monthrange(int(annee), int(mois))[1]
             start = f"{annee}-{int(mois):02d}-01"
             end = f"{annee}-{int(mois):02d}-{last:02d}"
-            query = query.gte('date_echeance', start).lte('date_echeance', end)
-        response = query.order('date_echeance', desc=False).order('id', desc=False).execute()
+            query = client.table(TABLE_BUDGET_FAMILIAL).select('*').gte('date_echeance', start).lte('date_echeance', end)
+            response = query.order('date_echeance', desc=False).order('id', desc=False).execute()
+            data = response.data if response.data else []
+            # Mois en cours : afficher aussi les entrées sans date
+            if annee == now.year and mois == now.month:
+                null_resp = client.table(TABLE_BUDGET_FAMILIAL).select('*').is_('date_echeance', 'null').execute()
+                null_data = null_resp.data if null_resp.data else []
+                ids_in_range = {r['id'] for r in data}
+                for r in null_data:
+                    if r.get('id') not in ids_in_range:
+                        data.append(r)
+                data.sort(key=lambda x: (x.get('date_echeance') or '9999-99-99', x.get('id') or 0))
+            return data
+        response = client.table(TABLE_BUDGET_FAMILIAL).select('*').order('date_echeance', desc=False).order('id', desc=False).execute()
         return response.data if response.data else []
     except Exception as e:
         error_msg = str(e).lower()

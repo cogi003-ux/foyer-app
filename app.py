@@ -509,9 +509,13 @@ def get_budget():
 def add_budget():
     """Ajoute une entrée (revenu ou dépense). Body : type, nom, montant, statut (optionnel), date_echeance (optionnel), est_recurrent (optionnel, booléen)."""
     try:
-        data = request.json
+        from datetime import date
+        data = dict(request.json) if request.json else {}
         if not data:
             return jsonify({'success': False, 'error': 'Aucune donnée reçue'}), 400
+        # Ne jamais laisser une date vide : si manquante ou vide, mettre la date du jour
+        if not data.get('date_echeance') or not str(data.get('date_echeance', '')).strip():
+            data['date_echeance'] = date.today().isoformat()
         success, message = add_budget_familial(data)
         if success:
             return jsonify({'success': True, 'message': message or 'Entrée ajoutée'})
