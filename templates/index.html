@@ -313,10 +313,16 @@
         </section>
 
         <!-- Onglet Gestion du Budget (Parents uniquement) -->
-        <section id="budget" class="tab-content">
+        <section id="budget" class="tab-content budget-section">
             <div class="glass-card budget-card">
                 <h2>💰 Gestion du Budget</h2>
                 <p class="budget-parent-only">Espace réservé aux parents.</p>
+
+                <div class="budget-month-selector">
+                    <button type="button" class="budget-month-btn" id="budgetMonthPrev" aria-label="Mois précédent">&lsaquo;</button>
+                    <span class="budget-month-label" id="budgetMonthLabel">Février 2026</span>
+                    <button type="button" class="budget-month-btn" id="budgetMonthNext" aria-label="Mois suivant">&rsaquo;</button>
+                </div>
 
                 <div class="budget-solde-block">
                     <div class="budget-solde" id="budgetSolde">0,00 €</div>

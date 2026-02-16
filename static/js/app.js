@@ -234,7 +234,9 @@ let appData = {
     isParent: false,
     configFamille: null,
     attenteValidation: [],
-    questPhotoProofs: {} // tacheId -> dataURL (preuves photo par quête)
+    questPhotoProofs: {}, // tacheId -> dataURL (preuves photo par quête)
+    budgetYear: null,  // année du mois affiché (défaut = mois en cours)
+    budgetMonth: null // mois affiché (1-12)
 };
 
 // Initialisation
@@ -289,6 +291,7 @@ async function initializeApp() {
     document.getElementById('messageForm').addEventListener('submit', handleMessageSubmit);
     const budgetFormEl = document.getElementById('budgetForm');
     if (budgetFormEl) budgetFormEl.addEventListener('submit', handleBudgetSubmit);
+    initBudgetMonthSelector();
     initMessagePhotoPicker();
     const messageModalClose = document.getElementById('messageExpandModalClose');
     const messageModal = document.getElementById('messageExpandModal');
@@ -2158,6 +2161,50 @@ async function saveConfigFamille() {
 
 // ========== BUDGET FAMILIAL (PARENTS) ==========
 
+const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+function getBudgetMonthYear() {
+    const now = new Date();
+    return {
+        year: appData.budgetYear != null ? appData.budgetYear : now.getFullYear(),
+        month: appData.budgetMonth != null ? appData.budgetMonth : (now.getMonth() + 1)
+    };
+}
+
+function updateBudgetMonthLabel() {
+    const { year, month } = getBudgetMonthYear();
+    const label = document.getElementById('budgetMonthLabel');
+    if (label) label.textContent = `${MOIS_NOMS[month - 1]} ${year}`;
+}
+
+function initBudgetMonthSelector() {
+    const prev = document.getElementById('budgetMonthPrev');
+    const next = document.getElementById('budgetMonthNext');
+    if (!prev || !next) return;
+    const now = new Date();
+    if (appData.budgetYear == null) appData.budgetYear = now.getFullYear();
+    if (appData.budgetMonth == null) appData.budgetMonth = now.getMonth() + 1;
+    updateBudgetMonthLabel();
+    prev.addEventListener('click', () => {
+        appData.budgetMonth--;
+        if (appData.budgetMonth < 1) {
+            appData.budgetMonth = 12;
+            appData.budgetYear--;
+        }
+        updateBudgetMonthLabel();
+        loadBudget();
+    });
+    next.addEventListener('click', () => {
+        appData.budgetMonth++;
+        if (appData.budgetMonth > 12) {
+            appData.budgetMonth = 1;
+            appData.budgetYear++;
+        }
+        updateBudgetMonthLabel();
+        loadBudget();
+    });
+}
+
 function formatMontantBE(value) {
     const n = typeof value === 'number' ? value : parseFloat(value) || 0;
     return n.toLocaleString('fr-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -2165,8 +2212,9 @@ function formatMontantBE(value) {
 
 async function loadBudget() {
     if (!appData.isParent) return;
+    const { year, month } = getBudgetMonthYear();
     try {
-        const response = await fetch(`${API_BASE}/api/budget`);
+        const response = await fetch(`${API_BASE}/api/budget?annee=${year}&mois=${month}`);
         if (!response.ok) {
             if (response.status === 401) {
                 showToast('Authentification parent requise', 'error');
@@ -2235,10 +2283,14 @@ async function handleBudgetSubmit(e) {
     e.preventDefault();
     if (!appData.isParent) return;
     const form = e.target;
-    const type = (form.querySelector('[name="type"]') || {}).value || 'depense';
+    let type = (form.querySelector('[name="type"]') || {}).value || 'depense';
+    type = String(type).toLowerCase().replace(/é/g, 'e').trim();
+    if (type !== 'revenu' && type !== 'depense') type = 'depense';
     const nom = (form.querySelector('[name="nom"]') || {}).value || '';
     const montant = parseFloat((form.querySelector('[name="montant"]') || {}).value) || 0;
     const estRecurrent = (form.querySelector('[name="est_recurrent"]') || {}).value === 'oui';
+    const { year, month } = getBudgetMonthYear();
+    const dateEcheance = `${year}-${String(month).padStart(2, '0')}-01`;
     if (!nom.trim()) {
         showToast('Indique un nom', 'error');
         return;
@@ -2247,7 +2299,14 @@ async function handleBudgetSubmit(e) {
         const response = await fetch(`${API_BASE}/api/budget`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type, nom: nom.trim(), montant, statut: 'prevu', est_recurrent: estRecurrent })
+            body: JSON.stringify({
+                type,
+                nom: nom.trim(),
+                montant,
+                statut: 'prevu',
+                est_recurrent: estRecurrent,
+                date_echeance: dateEcheance
+            })
         });
         const data = await response.json().catch(() => ({}));
         if (response.ok && data.success) {

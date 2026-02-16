@@ -2175,10 +2175,46 @@ body.theme-enfant .cosmic-bg {
 }
 
 /* ——— Gestion du Budget (parents) ——— */
+#budget.budget-section {
+    padding-bottom: 100px;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
 #budget .budget-card {
     max-width: 100%;
     margin: 0 auto;
     box-sizing: border-box;
+}
+.budget-month-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.budget-month-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.4);
+    background: rgba(0,0,0,0.35);
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.budget-month-btn:hover {
+    background: rgba(255,255,255,0.15);
+}
+.budget-month-label {
+    font-size: 1.2rem;
+    font-weight: 800;
+    min-width: 160px;
+    text-align: center;
 }
 .budget-card h2 {
     margin-bottom: 4px;
@@ -2257,12 +2293,15 @@ body.theme-enfant .cosmic-bg {
 }
 .budget-table-wrap {
     overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
     border-radius: 16px;
     border: 2px solid rgba(255,255,255,0.2);
     background: rgba(0,0,0,0.25);
 }
 .budget-table {
     width: 100%;
+    min-width: 320px;
     border-collapse: collapse;
     font-size: 0.95rem;
 }

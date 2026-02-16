@@ -485,14 +485,20 @@ def add_recompense_achetee_api():
 @app.route('/api/budget', methods=['GET'])
 @require_parent_auth
 def get_budget():
-    """Liste les entrées du budget familial et le solde restant."""
+    """Liste les entrées du budget familial pour le mois demandé. Query: annee, mois (défaut = mois en cours)."""
     try:
-        items = get_all_budget_familial()
-        solde = get_solde_restant_budget()
+        from datetime import date
+        today = date.today()
+        annee = request.args.get('annee', type=int) or today.year
+        mois = request.args.get('mois', type=int) or today.month
+        items = get_all_budget_familial(annee, mois)
+        solde = get_solde_restant_budget(annee, mois)
         return jsonify({
             'success': True,
             'items': items,
-            'solde_restant': solde
+            'solde_restant': solde,
+            'annee': annee,
+            'mois': mois
         })
     except Exception as e:
         print(f"[ERROR] get_budget: {e}")

@@ -802,13 +802,23 @@ CREATE TABLE {TABLE_BUDGET_FAMILIAL} (
 );
 """
 
-def get_all_budget_familial() -> List[Dict]:
-    """Récupère toutes les entrées du budget familial."""
+def get_all_budget_familial(annee: Optional[int] = None, mois: Optional[int] = None) -> List[Dict]:
+    """
+    Récupère les entrées du budget familial.
+    Si annee et mois sont fournis, filtre par date_echeance dans ce mois.
+    """
     client = get_supabase_client()
     if not client:
         return []
     try:
-        response = client.table(TABLE_BUDGET_FAMILIAL).select('*').order('date_echeance', desc=False).order('id', desc=False).execute()
+        query = client.table(TABLE_BUDGET_FAMILIAL).select('*')
+        if annee is not None and mois is not None:
+            from calendar import monthrange
+            last = monthrange(int(annee), int(mois))[1]
+            start = f"{annee}-{int(mois):02d}-01"
+            end = f"{annee}-{int(mois):02d}-{last:02d}"
+            query = query.gte('date_echeance', start).lte('date_echeance', end)
+        response = query.order('date_echeance', desc=False).order('id', desc=False).execute()
         return response.data if response.data else []
     except Exception as e:
         error_msg = str(e).lower()
@@ -912,16 +922,13 @@ def delete_budget_familial(item_id: int) -> bool:
         return False
 
 
-def get_solde_restant_budget() -> float:
+def get_solde_restant_budget(annee: Optional[int] = None, mois: Optional[int] = None) -> float:
     """
     Solde restant = Somme Revenus - Somme Dépenses Payées - Somme Dépenses Prévues.
+    Si annee et mois sont fournis, calcule sur les entrées du mois uniquement.
     """
-    client = get_supabase_client()
-    if not client:
-        return 0.0
+    data = get_all_budget_familial(annee, mois)
     try:
-        rows = client.table(TABLE_BUDGET_FAMILIAL).select('type, statut, montant').execute()
-        data = rows.data if rows.data else []
         revenus = sum(float(r.get('montant', 0) or 0) for r in data if (r.get('type') or '').lower() == 'revenu')
         depenses_payees = sum(float(r.get('montant', 0) or 0) for r in data if (r.get('type') or '').lower() == 'depense' and (r.get('statut') or '').lower() == 'paye')
         depenses_prevues = sum(float(r.get('montant', 0) or 0) for r in data if (r.get('type') or '').lower() == 'depense' and (r.get('statut') or '').lower() == 'prevu')
