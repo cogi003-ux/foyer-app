@@ -2263,11 +2263,12 @@ function displayBudget(items, soldeRestant) {
         if (!item) return '<span class="budget-cell-empty">—</span>';
         const montant = formatMontantBE(item.montant);
         const dateStr = formatDateLabel(item);
+        const deleteBtn = (typeof item.id === 'number' && item.id > 0) ? `<button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>` : '';
         return `<div class="budget-cell-content">
             <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small></span>
             <span class="budget-item-montant revenu">+ ${montant} €</span>
             ${freqSelect(item)}
-            <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
+            ${deleteBtn}
         </div>`;
     }
     function cellDepense(item) {
@@ -2278,11 +2279,12 @@ function displayBudget(items, soldeRestant) {
         const payeBtn = !isPaye
             ? `<button type="button" class="btn-budget-paye" onclick="markAsPayeBudget(${item.id})">Marquer comme payé</button>`
             : '<span class="budget-item-paye">Payé</span>';
+        const deleteBtn = (typeof item.id === 'number' && item.id > 0) ? `<button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>` : '';
         return `<div class="budget-cell-content ${isPaye ? 'budget-item-paye' : ''}">
             <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small></span>
             <span class="budget-item-montant depense">− ${montant} €</span>
             ${freqSelect(item)}
-            <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
+            ${deleteBtn}
             ${payeBtn}
         </div>`;
     }

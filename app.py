@@ -15,7 +15,7 @@ from database import (
     get_recompenses_personnalisees, add_recompense_personnalisee,
     get_recompenses_achetees, add_recompense_achetee,
     get_all_budget_familial, add_budget_familial, update_budget_familial, delete_budget_familial,
-    get_solde_restant_budget
+    get_solde_restant_budget, create_budget_from_synthetic, _decode_synthetic_id
 )
 
 app = Flask(__name__)
@@ -527,11 +527,22 @@ def add_budget():
 @app.route('/api/budget/<int:item_id>', methods=['PATCH'])
 @require_parent_auth
 def update_budget(item_id):
-    """Modifie le statut (paye/prevu), le montant ou la frequence (une_fois, mensuel, trimestriel) d'une entrée."""
+    """Modifie le statut (paye/prevu), le montant ou la frequence. Si item_id < 0 (entrée récurrente projetée), crée une vraie ligne en base avec le statut demandé."""
     try:
-        data = request.json
-        if not data:
-            return jsonify({'success': False, 'error': 'Aucune donnée reçue'}), 400
+        data = request.json or {}
+        if item_id < 0:
+            if 'frequence' in data:
+                source_id = _decode_synthetic_id(item_id)
+                if source_id is not None and update_budget_familial(source_id, {'frequence': data.get('frequence')}):
+                    return jsonify({'success': True})
+                return jsonify({'success': False, 'error': 'Erreur mise à jour fréquence'}), 400
+            statut = (data.get('statut') or 'prevu').strip().lower()
+            if statut not in ('prevu', 'paye'):
+                statut = 'prevu'
+            success, message = create_budget_from_synthetic(item_id, statut)
+            if success:
+                return jsonify({'success': True})
+            return jsonify({'success': False, 'error': message}), 400
         if update_budget_familial(item_id, data):
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': 'Erreur lors de la mise à jour'}), 400
@@ -542,8 +553,10 @@ def update_budget(item_id):
 @app.route('/api/budget/<int:item_id>', methods=['DELETE'])
 @require_parent_auth
 def delete_budget(item_id):
-    """Supprime une entrée du budget familial."""
+    """Supprime une entrée du budget familial. Les entrées récurrentes projetées (id < 0) ne peuvent pas être supprimées."""
     try:
+        if item_id < 0:
+            return jsonify({'success': False, 'error': 'Impossible de supprimer une occurrence récurrente projetée'}), 400
         if delete_budget_familial(item_id):
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': 'Erreur lors de la suppression'}), 500

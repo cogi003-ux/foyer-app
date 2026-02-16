@@ -802,11 +802,43 @@ CREATE TABLE {TABLE_BUDGET_FAMILIAL} (
 );
 """
 
+def _parse_date(d) -> Optional[tuple]:
+    """Retourne (year, month, day) ou None."""
+    if not d:
+        return None
+    try:
+        if isinstance(d, str):
+            parts = d.split('-')
+            if len(parts) >= 3:
+                return int(parts[0]), int(parts[1]), int(parts[2])
+            return None
+        return getattr(d, 'year', None), getattr(d, 'month', None), getattr(d, 'day', None)
+    except (ValueError, TypeError):
+        return None
+
+
+def _synthetic_id(source_id: int, annee: int, mois: int, day: int) -> int:
+    """Encode (source_id, annee, mois, day) en un id négatif unique."""
+    return -((source_id * 100000000) + (annee * 10000) + (mois * 100) + min(day, 31))
+
+
+def _decode_synthetic_id(synthetic_id: int) -> Optional[int]:
+    """Extrait le source_id d'un id synthétique (pour mettre à jour la ligne source)."""
+    if synthetic_id >= 0:
+        return None
+    n = -synthetic_id
+    return n // 100000000
+
+
 def get_all_budget_familial(annee: Optional[int] = None, mois: Optional[int] = None) -> List[Dict]:
     """
-    Récupère les entrées du budget familial.
-    Si annee et mois sont fournis, filtre par date_echeance dans ce mois.
-    Pour le mois en cours, inclut aussi les entrées sans date (date_echeance NULL) pour ne pas les "perdre".
+    Récupère les entrées du budget familial pour le mois demandé.
+    - Entrées dont date_echeance est dans ce mois.
+    - Pour le mois en cours : entrées sans date (NULL).
+    - Entrées récurrentes mensuelles : toutes les lignes des mois précédents avec frequence='mensuel'
+      sont projetées dans le mois demandé (même jour), statut='prevu'.
+    - Entrées récurrentes trimestrielles : lignes dont l'écart avec le mois demandé est 3, 6, 9... mois,
+      projetées dans le mois demandé (même jour), statut='prevu'.
     """
     client = get_supabase_client()
     if not client:
@@ -815,21 +847,59 @@ def get_all_budget_familial(annee: Optional[int] = None, mois: Optional[int] = N
         from calendar import monthrange
         now = datetime.now()
         if annee is not None and mois is not None:
-            last = monthrange(int(annee), int(mois))[1]
-            start = f"{annee}-{int(mois):02d}-01"
-            end = f"{annee}-{int(mois):02d}-{last:02d}"
+            annee, mois = int(annee), int(mois)
+            last = monthrange(annee, mois)[1]
+            start = f"{annee}-{mois:02d}-01"
+            end = f"{annee}-{mois:02d}-{last:02d}"
             query = client.table(TABLE_BUDGET_FAMILIAL).select('*').gte('date_echeance', start).lte('date_echeance', end)
             response = query.order('date_echeance', desc=False).order('id', desc=False).execute()
-            data = response.data if response.data else []
-            # Mois en cours : afficher aussi les entrées sans date
+            data = list(response.data) if response.data else []
+            real_keys = {(r.get('nom'), r.get('type'), r.get('date_echeance')) for r in data}
+
             if annee == now.year and mois == now.month:
                 null_resp = client.table(TABLE_BUDGET_FAMILIAL).select('*').is_('date_echeance', 'null').execute()
                 null_data = null_resp.data if null_resp.data else []
                 ids_in_range = {r['id'] for r in data}
                 for r in null_data:
                     if r.get('id') not in ids_in_range:
-                        data.append(r)
-                data.sort(key=lambda x: (x.get('date_echeance') or '9999-99-99', x.get('id') or 0))
+                        data.append(dict(r))
+                        real_keys.add((r.get('nom'), r.get('type'), r.get('date_echeance')))
+
+            recur_resp = client.table(TABLE_BUDGET_FAMILIAL).select('*').in_('frequence', ['mensuel', 'trimestriel']).execute()
+            recur_rows = recur_resp.data if recur_resp.data else []
+            for r in recur_rows:
+                parsed = _parse_date(r.get('date_echeance'))
+                if not parsed:
+                    continue
+                ry, rm, rd = parsed
+                freq = (r.get('frequence') or '').lower()
+                if freq == 'mensuel':
+                    if (annee, mois) < (ry, rm):
+                        continue
+                elif freq == 'trimestriel':
+                    diff_months = (annee * 12 + mois) - (ry * 12 + rm)
+                    if diff_months < 0 or diff_months % 3 != 0:
+                        continue
+                else:
+                    continue
+                last_day = monthrange(annee, mois)[1]
+                day = min(rd, last_day)
+                proj_date = f"{annee}-{mois:02d}-{day:02d}"
+                if (r.get('nom'), r.get('type'), proj_date) in real_keys:
+                    continue
+                real_keys.add((r.get('nom'), r.get('type'), proj_date))
+                synthetic = {
+                    'id': _synthetic_id(r['id'], annee, mois, day),
+                    'type': r.get('type'),
+                    'nom': r.get('nom'),
+                    'montant': r.get('montant'),
+                    'statut': 'prevu',
+                    'date_echeance': proj_date,
+                    'frequence': freq,
+                    'est_recurrent': True,
+                }
+                data.append(synthetic)
+            data.sort(key=lambda x: (x.get('date_echeance') or '9999-99-99', x.get('id') or 0))
             return data
         response = client.table(TABLE_BUDGET_FAMILIAL).select('*').order('date_echeance', desc=False).order('id', desc=False).execute()
         return response.data if response.data else []
@@ -889,6 +959,50 @@ def add_budget_familial(data: Dict) -> tuple[bool, str]:
         return False, "Aucune donnée retournée"
     except Exception as e:
         log_error(f"Erreur add_budget_familial: {e}")
+        return False, str(e)
+
+
+def create_budget_from_synthetic(synthetic_id: int, statut: str = 'prevu') -> tuple[bool, str]:
+    """
+    Crée une vraie ligne en base à partir d'un id synthétique (récurrence projetée).
+    Utilisé quand l'utilisateur marque comme payé une entrée récurrente affichée dans un mois.
+    """
+    if synthetic_id >= 0:
+        return False, "Id invalide"
+    try:
+        rest = -synthetic_id
+        source_id = rest // 100000000
+        rest = rest % 100000000
+        annee = rest // 10000
+        rest = rest % 10000
+        mois = rest // 100
+        day = rest % 100
+    except Exception:
+        return False, "Id synthétique invalide"
+    client = get_supabase_client()
+    if not client:
+        return False, "Supabase non configuré"
+    try:
+        from calendar import monthrange
+        row = client.table(TABLE_BUDGET_FAMILIAL).select('*').eq('id', source_id).execute()
+        if not row.data or len(row.data) == 0:
+            return False, "Entrée source introuvable"
+        r = row.data[0]
+        last = monthrange(annee, mois)[1]
+        day = min(day, last)
+        date_echeance = f"{annee}-{mois:02d}-{day:02d}"
+        new_row = {
+            'type': r.get('type'),
+            'nom': r.get('nom'),
+            'montant': float(r.get('montant') or 0),
+            'statut': statut if statut in ('prevu', 'paye') else 'prevu',
+            'date_echeance': date_echeance,
+            'frequence': r.get('frequence') or 'une_fois',
+        }
+        client.table(TABLE_BUDGET_FAMILIAL).insert(new_row).execute()
+        return True, "Entrée créée"
+    except Exception as e:
+        log_error(f"Erreur create_budget_from_synthetic: {e}")
         return False, str(e)
 
 
