@@ -2263,12 +2263,13 @@ function displayBudget(items, soldeRestant) {
         if (!item) return '<span class="budget-cell-empty">—</span>';
         const montant = formatMontantBE(item.montant);
         const dateStr = formatDateLabel(item);
-        const deleteBtn = (typeof item.id === 'number' && item.id > 0) ? `<button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>` : '';
-        return `<div class="budget-cell-content">
+        const nomAttr = String(item.nom || '').replace(/"/g, '&quot;');
+        return `<div class="budget-cell-content" data-item-id="${item.id}" data-item-nom="${nomAttr}" data-item-montant="${item.montant}">
             <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small></span>
             <span class="budget-item-montant revenu">+ ${montant} €</span>
             ${freqSelect(item)}
-            ${deleteBtn}
+            <button type="button" class="budget-btn-edit" onclick="openBudgetEditModal(this)" aria-label="Modifier">Modifier</button>
+            <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
         </div>`;
     }
     function cellDepense(item) {
@@ -2279,12 +2280,13 @@ function displayBudget(items, soldeRestant) {
         const payeBtn = !isPaye
             ? `<button type="button" class="btn-budget-paye" onclick="markAsPayeBudget(${item.id})">Marquer comme payé</button>`
             : '<span class="budget-item-paye">Payé</span>';
-        const deleteBtn = (typeof item.id === 'number' && item.id > 0) ? `<button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>` : '';
-        return `<div class="budget-cell-content ${isPaye ? 'budget-item-paye' : ''}">
+        const nomAttr = String(item.nom || '').replace(/"/g, '&quot;');
+        return `<div class="budget-cell-content ${isPaye ? 'budget-item-paye' : ''}" data-item-id="${item.id}" data-item-nom="${nomAttr}" data-item-montant="${item.montant}">
             <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small></span>
             <span class="budget-item-montant depense">− ${montant} €</span>
             ${freqSelect(item)}
-            ${deleteBtn}
+            <button type="button" class="budget-btn-edit" onclick="openBudgetEditModal(this)" aria-label="Modifier">Modifier</button>
+            <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
             ${payeBtn}
         </div>`;
     }
@@ -2362,11 +2364,25 @@ async function markAsPayeBudget(itemId) {
     }
 }
 
-async function deleteBudgetItem(itemId) {
+function deleteBudgetItem(itemId) {
     if (!appData.isParent) return;
+    if (typeof itemId === 'number' && itemId < 0) {
+        document.getElementById('budgetDeleteRecurrenceModal').dataset.pendingId = String(itemId);
+        document.getElementById('budgetDeleteRecurrenceModal').style.display = 'flex';
+        return;
+    }
     if (!confirm('Supprimer cette entrée ?')) return;
+    doDeleteBudgetItem(itemId);
+}
+
+async function doDeleteBudgetItem(itemId) {
     try {
-        const response = await fetch(`${API_BASE}/api/budget/${itemId}`, { method: 'DELETE' });
+        const opts = { method: 'DELETE' };
+        if (typeof itemId === 'number' && itemId < 0) {
+            opts.headers = { 'Content-Type': 'application/json' };
+            opts.body = JSON.stringify({ action: 'this_month' });
+        }
+        const response = await fetch(`${API_BASE}/api/budget/${itemId}`, opts);
         if (response.ok) {
             showToast('Entrée supprimée', 'success');
             await loadBudget();
@@ -2375,7 +2391,92 @@ async function deleteBudgetItem(itemId) {
             showToast(data.error || 'Erreur lors de la suppression', 'error');
         }
     } catch (err) {
-        console.error('deleteBudgetItem:', err);
+        console.error('doDeleteBudgetItem:', err);
+        showToast('Erreur réseau', 'error');
+    }
+}
+
+function closeBudgetDeleteRecurrenceModal() {
+    document.getElementById('budgetDeleteRecurrenceModal').style.display = 'none';
+    document.getElementById('budgetDeleteRecurrenceModal').dataset.pendingId = '';
+}
+
+async function confirmBudgetDeleteRecurrence(action) {
+    const modal = document.getElementById('budgetDeleteRecurrenceModal');
+    const idStr = modal.dataset.pendingId;
+    if (idStr === undefined || idStr === '') return;
+    const itemId = parseInt(idStr, 10);
+    if (Number.isNaN(itemId)) return;
+    closeBudgetDeleteRecurrenceModal();
+    try {
+        const response = await fetch(`${API_BASE}/api/budget/${itemId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action === 'stop_recurrence' ? 'stop_recurrence' : 'this_month' })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.success) {
+            showToast(action === 'stop_recurrence' ? 'Récurrence arrêtée' : 'Occurrence supprimée pour ce mois', 'success');
+            await loadBudget();
+        } else {
+            showToast(data.error || 'Erreur', 'error');
+        }
+    } catch (err) {
+        console.error('confirmBudgetDeleteRecurrence:', err);
+        showToast('Erreur réseau', 'error');
+    }
+}
+
+function openBudgetEditModal(btn) {
+    const cell = btn.closest('.budget-cell-content');
+    if (!cell) return;
+    const id = cell.dataset.itemId != null ? parseInt(cell.dataset.itemId, 10) : NaN;
+    const nom = cell.dataset.itemNom != null ? cell.dataset.itemNom : '';
+    const montant = cell.dataset.itemMontant != null ? cell.dataset.itemMontant : '';
+    if (Number.isNaN(id)) return;
+    const modal = document.getElementById('budgetEditModal');
+    const form = document.getElementById('budgetEditForm');
+    if (!modal || !form) return;
+    modal.dataset.editItemId = String(id);
+    document.getElementById('edit-budget-nom').value = nom;
+    document.getElementById('edit-budget-montant').value = montant;
+    modal.style.display = 'flex';
+}
+
+function closeBudgetEditModal() {
+    const modal = document.getElementById('budgetEditModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function submitBudgetEdit(e) {
+    e.preventDefault();
+    const modal = document.getElementById('budgetEditModal');
+    const idStr = modal && modal.dataset.editItemId;
+    if (!idStr) return;
+    const itemId = parseInt(idStr, 10);
+    if (Number.isNaN(itemId)) return;
+    const nom = (document.getElementById('edit-budget-nom') || {}).value || '';
+    const montant = parseFloat((document.getElementById('edit-budget-montant') || {}).value);
+    if (!nom.trim()) {
+        showToast('Indique un nom', 'error');
+        return;
+    }
+    try {
+        const response = await fetch(`${API_BASE}/api/budget/${itemId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nom: nom.trim(), montant: Number.isNaN(montant) ? undefined : montant })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.success) {
+            closeBudgetEditModal();
+            showToast('Modification enregistrée', 'success');
+            await loadBudget();
+        } else {
+            showToast(data.error || 'Erreur', 'error');
+        }
+    } catch (err) {
+        console.error('submitBudgetEdit:', err);
         showToast('Erreur réseau', 'error');
     }
 }

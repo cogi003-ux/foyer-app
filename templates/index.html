@@ -373,6 +373,43 @@
                     </table>
                 </div>
             </div>
+            <!-- Modal suppression récurrence : choix ce mois / arrêter -->
+            <div id="budgetDeleteRecurrenceModal" class="modal" style="display: none;" aria-labelledby="budgetDeleteRecurrenceTitle">
+                <div class="modal-content game-panel">
+                    <div class="modal-header">
+                        <h2 id="budgetDeleteRecurrenceTitle">Supprimer cette dépense récurrente</h2>
+                        <button type="button" class="modal-close" onclick="closeBudgetDeleteRecurrenceModal()" aria-label="Fermer">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Que souhaitez-vous faire ?</p>
+                        <div class="budget-delete-actions">
+                            <button type="button" class="btn-secondary" id="budgetDeleteThisMonthBtn" onclick="confirmBudgetDeleteRecurrence('this_month')">Supprimer uniquement ce mois</button>
+                            <button type="button" class="btn-primary" id="budgetStopRecurrenceBtn" onclick="confirmBudgetDeleteRecurrence('stop_recurrence')">Arrêter la récurrence</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Modal modifier nom / montant d'une occurrence -->
+            <div id="budgetEditModal" class="modal" style="display: none;" aria-labelledby="budgetEditModalTitle">
+                <div class="modal-content game-panel">
+                    <div class="modal-header">
+                        <h2 id="budgetEditModalTitle">Modifier cette occurrence</h2>
+                        <button type="button" class="modal-close" onclick="closeBudgetEditModal()" aria-label="Fermer">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="budgetEditForm" class="budget-edit-form" onsubmit="submitBudgetEdit(event)">
+                            <label for="edit-budget-nom">Nom</label>
+                            <input type="text" id="edit-budget-nom" name="nom" required placeholder="Nom">
+                            <label for="edit-budget-montant">Montant (€)</label>
+                            <input type="number" id="edit-budget-montant" name="montant" step="0.01" min="0" required lang="fr-BE">
+                            <div class="budget-edit-actions">
+                                <button type="button" class="btn-secondary" onclick="closeBudgetEditModal()">Annuler</button>
+                                <button type="submit" class="btn-primary">Enregistrer</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- Onglet Gestion Famille (Parents uniquement) -->

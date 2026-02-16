@@ -2420,6 +2420,45 @@ body.theme-enfant .cosmic-bg {
 .budget-btn-delete:active {
     background: rgba(200, 60, 60, 0.6);
 }
+.budget-btn-edit {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.budget-btn-edit:hover {
+    background: rgba(255,255,255,0.2);
+}
+.budget-delete-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+.budget-edit-form label {
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+.budget-edit-form input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08);
+    color: var(--text-primary);
+}
+.budget-edit-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
 .btn-budget-paye {
     padding: 6px 12px;
     font-size: 0.85rem;

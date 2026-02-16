@@ -15,7 +15,8 @@ from database import (
     get_recompenses_personnalisees, add_recompense_personnalisee,
     get_recompenses_achetees, add_recompense_achetee,
     get_all_budget_familial, add_budget_familial, update_budget_familial, delete_budget_familial,
-    get_solde_restant_budget, create_budget_from_synthetic, _decode_synthetic_id
+    get_solde_restant_budget, create_budget_from_synthetic, _decode_synthetic_id,
+    delete_recurrence_this_month, stop_recurrence
 )
 
 app = Flask(__name__)
@@ -527,7 +528,7 @@ def add_budget():
 @app.route('/api/budget/<int:item_id>', methods=['PATCH'])
 @require_parent_auth
 def update_budget(item_id):
-    """Modifie le statut (paye/prevu), le montant ou la frequence. Si item_id < 0 (entrée récurrente projetée), crée une vraie ligne en base avec le statut demandé."""
+    """Modifie le statut (paye/prevu), le montant, le nom ou la frequence. Si item_id < 0 (récurrence projetée) et nom/montant fournis, crée une copie réelle pour ce mois."""
     try:
         data = request.json or {}
         if item_id < 0:
@@ -536,10 +537,23 @@ def update_budget(item_id):
                 if source_id is not None and update_budget_familial(source_id, {'frequence': data.get('frequence')}):
                     return jsonify({'success': True})
                 return jsonify({'success': False, 'error': 'Erreur mise à jour fréquence'}), 400
+            nom_override = data.get('nom')
+            if nom_override is not None:
+                nom_override = str(nom_override).strip() or None
+            montant_override = data.get('montant')
+            if montant_override is not None:
+                try:
+                    montant_override = float(montant_override)
+                except (TypeError, ValueError):
+                    montant_override = None
             statut = (data.get('statut') or 'prevu').strip().lower()
             if statut not in ('prevu', 'paye'):
                 statut = 'prevu'
-            success, message = create_budget_from_synthetic(item_id, statut)
+            success, message = create_budget_from_synthetic(
+                item_id, statut,
+                nom_override=nom_override,
+                montant_override=montant_override,
+            )
             if success:
                 return jsonify({'success': True})
             return jsonify({'success': False, 'error': message}), 400
@@ -553,10 +567,21 @@ def update_budget(item_id):
 @app.route('/api/budget/<int:item_id>', methods=['DELETE'])
 @require_parent_auth
 def delete_budget(item_id):
-    """Supprime une entrée du budget familial. Les entrées récurrentes projetées (id < 0) ne peuvent pas être supprimées."""
+    """Supprime une entrée. Si item_id < 0 (récurrence), body doit contenir action: 'this_month' ou 'stop_recurrence'."""
     try:
         if item_id < 0:
-            return jsonify({'success': False, 'error': 'Impossible de supprimer une occurrence récurrente projetée'}), 400
+            body = request.get_json(silent=True) or {}
+            action = (body.get('action') or '').strip().lower()
+            if action == 'this_month':
+                if delete_recurrence_this_month(item_id):
+                    return jsonify({'success': True})
+                return jsonify({'success': False, 'error': 'Erreur lors de la suppression pour ce mois'}), 400
+            if action == 'stop_recurrence':
+                source_id = _decode_synthetic_id(item_id)
+                if source_id is not None and stop_recurrence(source_id):
+                    return jsonify({'success': True})
+                return jsonify({'success': False, 'error': 'Erreur lors de l\'arrêt de la récurrence'}), 400
+            return jsonify({'success': False, 'error': 'Action requise: "this_month" ou "stop_recurrence"'}), 400
         if delete_budget_familial(item_id):
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': 'Erreur lors de la suppression'}), 500

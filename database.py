@@ -19,6 +19,7 @@ TABLE_CLASSEMENT = 'classement'
 TABLE_RECOMPENSES_PERSONNALISEES = 'recompenses_personnalisees'
 TABLE_RECOMPENSES_ACHETEES = 'recompenses_achetees'
 TABLE_BUDGET_FAMILIAL = 'budget_familial'
+TABLE_BUDGET_RECURRENCE_EXCEPTIONS = 'budget_recurrence_exceptions'
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 def log_debug(message: str):
@@ -802,6 +803,16 @@ CREATE TABLE {TABLE_BUDGET_FAMILIAL} (
 );
 """
 
+# Exécuter ce SQL dans Supabase (SQL Editor) pour activer "Supprimer uniquement ce mois" sur les récurrences :
+BUDGET_EXCEPTIONS_TABLE_SQL = f"""
+CREATE TABLE IF NOT EXISTS {TABLE_BUDGET_RECURRENCE_EXCEPTIONS} (
+    source_id INTEGER NOT NULL REFERENCES {TABLE_BUDGET_FAMILIAL}(id) ON DELETE CASCADE,
+    annee INTEGER NOT NULL,
+    mois INTEGER NOT NULL,
+    PRIMARY KEY (source_id, annee, mois)
+);
+"""
+
 def _parse_date(d) -> Optional[tuple]:
     """Retourne (year, month, day) ou None."""
     if not d:
@@ -828,6 +839,76 @@ def _decode_synthetic_id(synthetic_id: int) -> Optional[int]:
         return None
     n = -synthetic_id
     return n // 100000000
+
+
+def _decode_synthetic_id_full(synthetic_id: int) -> Optional[tuple]:
+    """Extrait (source_id, annee, mois, day) d'un id synthétique. Retourne None si invalide."""
+    if synthetic_id >= 0:
+        return None
+    try:
+        n = -synthetic_id
+        source_id = n // 100000000
+        rest = n % 100000000
+        annee = rest // 10000
+        rest = rest % 10000
+        mois = rest // 100
+        day = rest % 100
+        return (source_id, annee, mois, day)
+    except Exception:
+        return None
+
+
+def get_recurrence_exceptions(annee: int, mois: int) -> set:
+    """Retourne l'ensemble des source_id à ne pas projeter pour (annee, mois)."""
+    client = get_supabase_client()
+    if not client:
+        return set()
+    try:
+        r = client.table(TABLE_BUDGET_RECURRENCE_EXCEPTIONS).select('source_id').eq('annee', annee).eq('mois', mois).execute()
+        if r.data:
+            return {int(x['source_id']) for x in r.data}
+        return set()
+    except Exception as e:
+        error_msg = str(e).lower()
+        if 'relation' in error_msg and 'does not exist' in error_msg:
+            log_debug(f"Table '{TABLE_BUDGET_RECURRENCE_EXCEPTIONS}' n'existe pas encore")
+            return set()
+        log_error(f"Erreur get_recurrence_exceptions: {e}")
+        return set()
+
+
+def add_recurrence_exception(source_id: int, annee: int, mois: int) -> bool:
+    """Enregistre une exception : ne pas afficher la récurrence source_id pour ce mois."""
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        client.table(TABLE_BUDGET_RECURRENCE_EXCEPTIONS).upsert(
+            {'source_id': source_id, 'annee': annee, 'mois': mois},
+            on_conflict='source_id,annee,mois'
+        ).execute()
+        return True
+    except Exception as e:
+        error_msg = str(e).lower()
+        if 'relation' in error_msg and 'does not exist' in error_msg:
+            log_debug(f"Table '{TABLE_BUDGET_RECURRENCE_EXCEPTIONS}' n'existe pas. Exécutez BUDGET_EXCEPTIONS_TABLE_SQL dans Supabase.")
+            return False
+        log_error(f"Erreur add_recurrence_exception: {e}")
+        return False
+
+
+def delete_recurrence_this_month(synthetic_id: int) -> bool:
+    """Supprime uniquement l'occurrence de ce mois (la récurrence réapparaîtra le mois suivant)."""
+    decoded = _decode_synthetic_id_full(synthetic_id)
+    if not decoded:
+        return False
+    source_id, annee, mois = decoded[0], decoded[1], decoded[2]
+    return add_recurrence_exception(source_id, annee, mois)
+
+
+def stop_recurrence(source_id: int) -> bool:
+    """Passe la dépense d'origine en frequence 'une_fois' (arrêt de la récurrence pour tous les mois futurs)."""
+    return update_budget_familial(source_id, {'frequence': 'une_fois'})
 
 
 def get_all_budget_familial(annee: Optional[int] = None, mois: Optional[int] = None) -> List[Dict]:
@@ -865,9 +946,12 @@ def get_all_budget_familial(annee: Optional[int] = None, mois: Optional[int] = N
                         data.append(dict(r))
                         real_keys.add((r.get('nom'), r.get('type'), r.get('date_echeance')))
 
+            exceptions = get_recurrence_exceptions(annee, mois)
             recur_resp = client.table(TABLE_BUDGET_FAMILIAL).select('*').in_('frequence', ['mensuel', 'trimestriel']).execute()
             recur_rows = recur_resp.data if recur_resp.data else []
             for r in recur_rows:
+                if r.get('id') in exceptions:
+                    continue
                 parsed = _parse_date(r.get('date_echeance'))
                 if not parsed:
                     continue
@@ -962,23 +1046,23 @@ def add_budget_familial(data: Dict) -> tuple[bool, str]:
         return False, str(e)
 
 
-def create_budget_from_synthetic(synthetic_id: int, statut: str = 'prevu') -> tuple[bool, str]:
+def create_budget_from_synthetic(
+    synthetic_id: int,
+    statut: str = 'prevu',
+    nom_override: Optional[str] = None,
+    montant_override: Optional[float] = None,
+    add_exception: bool = False,
+) -> tuple[bool, str]:
     """
     Crée une vraie ligne en base à partir d'un id synthétique (récurrence projetée).
-    Utilisé quand l'utilisateur marque comme payé une entrée récurrente affichée dans un mois.
+    - statut: paye/prevu.
+    - nom_override / montant_override: si fournis, utilisés à la place de la source (copie indépendante).
+    - add_exception: si True, enregistre une exception pour ce mois afin que la récurrence ne s'affiche pas (la vraie ligne prenant la place).
     """
-    if synthetic_id >= 0:
+    decoded = _decode_synthetic_id_full(synthetic_id)
+    if not decoded:
         return False, "Id invalide"
-    try:
-        rest = -synthetic_id
-        source_id = rest // 100000000
-        rest = rest % 100000000
-        annee = rest // 10000
-        rest = rest % 10000
-        mois = rest // 100
-        day = rest % 100
-    except Exception:
-        return False, "Id synthétique invalide"
+    source_id, annee, mois, day = decoded
     client = get_supabase_client()
     if not client:
         return False, "Supabase non configuré"
@@ -991,15 +1075,22 @@ def create_budget_from_synthetic(synthetic_id: int, statut: str = 'prevu') -> tu
         last = monthrange(annee, mois)[1]
         day = min(day, last)
         date_echeance = f"{annee}-{mois:02d}-{day:02d}"
+        nom = str(nom_override).strip() if nom_override is not None and str(nom_override).strip() else r.get('nom')
+        try:
+            montant = round(float(montant_override), 2) if montant_override is not None else float(r.get('montant') or 0)
+        except (TypeError, ValueError):
+            montant = float(r.get('montant') or 0)
         new_row = {
             'type': r.get('type'),
-            'nom': r.get('nom'),
-            'montant': float(r.get('montant') or 0),
+            'nom': nom,
+            'montant': montant,
             'statut': statut if statut in ('prevu', 'paye') else 'prevu',
             'date_echeance': date_echeance,
             'frequence': r.get('frequence') or 'une_fois',
         }
         client.table(TABLE_BUDGET_FAMILIAL).insert(new_row).execute()
+        if add_exception or nom_override is not None or montant_override is not None:
+            add_recurrence_exception(source_id, annee, mois)
         return True, "Entrée créée"
     except Exception as e:
         log_error(f"Erreur create_budget_from_synthetic: {e}")
