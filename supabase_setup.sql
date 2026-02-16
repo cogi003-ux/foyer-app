@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS budget_familial (
     montant NUMERIC(12, 2) NOT NULL,
     statut VARCHAR(20) NOT NULL DEFAULT 'prevu' CHECK (statut IN ('prevu', 'paye')),
     date_echeance DATE,
-    est_recurrent BOOLEAN NOT NULL DEFAULT FALSE,
+    frequence VARCHAR(20) NOT NULL DEFAULT 'une_fois' CHECK (frequence IN ('une_fois', 'mensuel', 'trimestriel')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

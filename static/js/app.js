@@ -2260,9 +2260,9 @@ function displayBudget(items, soldeRestant) {
         if (!item) return '<span class="budget-cell-empty">—</span>';
         const montant = formatMontantBE(item.montant);
         const dateStr = formatDateLabel(item);
-        const recur = item.est_recurrent ? ' <small class="budget-recurrent">(récurrent)</small>' : '';
+        const freqLabel = item.frequence === 'mensuel' ? ' <small class="budget-recurrent">(mensuel)</small>' : item.frequence === 'trimestriel' ? ' <small class="budget-recurrent">(trimestriel)</small>' : '';
         return `<div class="budget-cell-content">
-            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${recur}</span>
+            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${freqLabel}</span>
             <span class="budget-item-montant revenu">+ ${montant} €</span>
             <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
         </div>`;
@@ -2272,12 +2272,12 @@ function displayBudget(items, soldeRestant) {
         const montant = formatMontantBE(item.montant);
         const isPaye = (item.statut || '').toLowerCase() === 'paye';
         const dateStr = formatDateLabel(item);
-        const recur = item.est_recurrent ? ' <small class="budget-recurrent">(récurrent)</small>' : '';
+        const freqLabel = item.frequence === 'mensuel' ? ' <small class="budget-recurrent">(mensuel)</small>' : item.frequence === 'trimestriel' ? ' <small class="budget-recurrent">(trimestriel)</small>' : '';
         const payeBtn = !isPaye
             ? `<button type="button" class="btn-budget-paye" onclick="markAsPayeBudget(${item.id})">Marquer comme payé</button>`
             : '<span class="budget-item-paye">Payé</span>';
         return `<div class="budget-cell-content ${isPaye ? 'budget-item-paye' : ''}">
-            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${recur}</span>
+            <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${freqLabel}</span>
             <span class="budget-item-montant depense">− ${montant} €</span>
             <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
             ${payeBtn}
@@ -2302,7 +2302,7 @@ async function handleBudgetSubmit(e) {
     if (type !== 'revenu' && type !== 'depense') type = 'depense';
     const nom = (form.querySelector('[name="nom"]') || {}).value || '';
     const montant = parseFloat((form.querySelector('[name="montant"]') || {}).value) || 0;
-    const estRecurrent = (form.querySelector('[name="est_recurrent"]') || {}).value === 'oui';
+    const frequence = (form.querySelector('[name="frequence"]') || {}).value || 'une_fois';
     const { year, month } = getBudgetMonthYear();
     const dateEcheance = `${year}-${String(month).padStart(2, '0')}-01`;
     if (!nom.trim()) {
@@ -2318,7 +2318,7 @@ async function handleBudgetSubmit(e) {
                 nom: nom.trim(),
                 montant,
                 statut: 'prevu',
-                est_recurrent: estRecurrent,
+                frequence: frequence,
                 date_echeance: dateEcheance
             })
         });

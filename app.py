@@ -507,7 +507,7 @@ def get_budget():
 @app.route('/api/budget', methods=['POST'])
 @require_parent_auth
 def add_budget():
-    """Ajoute une entrée (revenu ou dépense). Body : type, nom, montant, statut (optionnel), date_echeance (optionnel), est_recurrent (optionnel, booléen)."""
+    """Ajoute une entrée (revenu ou dépense). Body : type, nom, montant, statut (optionnel), date_echeance (optionnel), frequence (optionnel: une_fois, mensuel, trimestriel)."""
     try:
         from datetime import date
         data = dict(request.json) if request.json else {}

@@ -797,7 +797,7 @@ CREATE TABLE {TABLE_BUDGET_FAMILIAL} (
     montant NUMERIC(12, 2) NOT NULL,
     statut VARCHAR(20) NOT NULL DEFAULT 'prevu' CHECK (statut IN ('prevu', 'paye')),
     date_echeance DATE,
-    est_recurrent BOOLEAN NOT NULL DEFAULT FALSE,
+    frequence VARCHAR(20) NOT NULL DEFAULT 'une_fois' CHECK (frequence IN ('une_fois', 'mensuel', 'trimestriel')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 """
@@ -845,7 +845,7 @@ def get_all_budget_familial(annee: Optional[int] = None, mois: Optional[int] = N
 def add_budget_familial(data: Dict) -> tuple[bool, str]:
     """
     Ajoute une entrée au budget familial.
-    data: type (revenu/depense), nom, montant, statut (prevu/paye), date_echeance (optionnel), est_recurrent (optionnel).
+    data: type (revenu/depense), nom, montant, statut (prevu/paye), date_echeance (optionnel), frequence (optionnel: une_fois, mensuel, trimestriel).
     Retourne (success, message).
     """
     client = get_supabase_client()
@@ -872,14 +872,16 @@ def add_budget_familial(data: Dict) -> tuple[bool, str]:
             date_echeance = str(date_echeance).strip()
         else:
             date_echeance = None
-        est_recurrent = bool(data.get('est_recurrent', False))
+        freq = str(data.get('frequence', 'une_fois')).strip().lower()
+        if freq not in ('une_fois', 'mensuel', 'trimestriel'):
+            freq = 'une_fois'
         row = {
             'type': type_val,
             'nom': nom,
             'montant': round(montant, 2),
             'statut': statut,
             'date_echeance': date_echeance,
-            'est_recurrent': est_recurrent
+            'frequence': freq
         }
         response = client.table(TABLE_BUDGET_FAMILIAL).insert(row).execute()
         if response.data:
@@ -911,8 +913,10 @@ def update_budget_familial(item_id: int, update_data: Dict) -> bool:
         if 'date_echeance' in update_data:
             val = update_data['date_echeance']
             payload['date_echeance'] = str(val).strip() if val is not None and str(val).strip() else None
-        if 'est_recurrent' in update_data:
-            payload['est_recurrent'] = bool(update_data['est_recurrent'])
+        if 'frequence' in update_data:
+            f = str(update_data['frequence']).strip().lower()
+            if f in ('une_fois', 'mensuel', 'trimestriel'):
+                payload['frequence'] = f
         if not payload:
             return False
         client.table(TABLE_BUDGET_FAMILIAL).update(payload).eq('id', item_id).execute()
@@ -953,56 +957,70 @@ def get_solde_restant_budget(annee: Optional[int] = None, mois: Optional[int] = 
 
 def duplicate_budget_recurrent_mois_courant() -> tuple[int, str]:
     """
-    Duplique toutes les lignes budget_familial avec est_recurrent = True :
-    crée une nouvelle ligne par entrée récurrente avec date_echeance = même jour dans le mois en cours,
-    statut = 'prevu'. À exécuter au 1er de chaque mois (cron ou script de maintenance).
+    Renouvellement des dépenses/revenus à fréquence mensuelle ou trimestrielle.
+    - mensuel : duplique au mois M+1 (même jour).
+    - trimestriel : duplique au mois M+3 (même jour).
+    À exécuter au 1er de chaque mois (cron ou script de maintenance).
     Retourne (nombre de lignes créées, message).
     """
     client = get_supabase_client()
     if not client:
         return 0, "Supabase non configuré"
     try:
-        response = client.table(TABLE_BUDGET_FAMILIAL).select('*').eq('est_recurrent', True).execute()
+        from calendar import monthrange
+        response = client.table(TABLE_BUDGET_FAMILIAL).select('*').in_('frequence', ['mensuel', 'trimestriel']).execute()
         rows = response.data if response.data else []
         if not rows:
-            return 0, "Aucune entrée récurrente à dupliquer"
+            return 0, "Aucune entrée mensuelle ou trimestrielle à dupliquer"
         now = datetime.now()
-        year, month = now.year, now.month
+        cur_year, cur_month = now.year, now.month
         created = 0
         for r in rows:
+            freq = (r.get('frequence') or 'une_fois').lower()
+            if freq not in ('mensuel', 'trimestriel'):
+                continue
+            add_months = 1 if freq == 'mensuel' else 3
+            date_orig = r.get('date_echeance')
+            if not date_orig:
+                continue
+            try:
+                if isinstance(date_orig, str):
+                    parts = date_orig.split('-')
+                    y, m, d = int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) >= 3 else 1
+                else:
+                    y, m, d = getattr(date_orig, 'year', 1), getattr(date_orig, 'month', 1), getattr(date_orig, 'day', 1)
+            except (IndexError, ValueError, TypeError):
+                continue
+            m2 = m + add_months
+            y2 = y
+            while m2 > 12:
+                m2 -= 12
+                y2 += 1
+            while m2 < 1:
+                m2 += 12
+                y2 -= 1
+            if (y2, m2) != (cur_year, cur_month):
+                continue
+            last = monthrange(y2, m2)[1]
+            d2 = min(d, last)
+            new_date = f"{y2}-{m2:02d}-{d2:02d}"
             type_val = (r.get('type') or 'depense').lower()
             nom = str(r.get('nom') or '').strip()
             montant = float(r.get('montant') or 0)
-            date_orig = r.get('date_echeance')
-            if date_orig:
-                try:
-                    if isinstance(date_orig, str):
-                        parts = date_orig.split('-')
-                        day = int(parts[2]) if len(parts) >= 3 else 1
-                    else:
-                        day = getattr(date_orig, 'day', 1)
-                except (IndexError, ValueError, TypeError):
-                    day = 1
-            else:
-                day = 1
-            try:
-                from calendar import monthrange
-                max_day = monthrange(year, month)[1]
-                day = min(day, max_day)
-            except Exception:
-                day = min(day, 28)
-            new_date = f"{year}-{month:02d}-{day:02d}"
+            existing = client.table(TABLE_BUDGET_FAMILIAL).select('id').eq('nom', nom).eq('type', type_val).eq('date_echeance', new_date).execute()
+            if existing.data and len(existing.data) > 0:
+                continue
             new_row = {
                 'type': type_val,
                 'nom': nom,
                 'montant': round(montant, 2),
                 'statut': 'prevu',
                 'date_echeance': new_date,
-                'est_recurrent': True
+                'frequence': freq
             }
             client.table(TABLE_BUDGET_FAMILIAL).insert(new_row).execute()
             created += 1
-        return created, f"{created} entrée(s) récurrente(s) dupliquée(s) pour le mois en cours"
+        return created, f"{created} entrée(s) dupliquée(s) pour le mois en cours"
     except Exception as e:
         log_error(f"Erreur duplicate_budget_recurrent_mois_courant: {e}")
         return 0, str(e)
