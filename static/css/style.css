@@ -2344,6 +2344,31 @@ body.theme-enfant .cosmic-bg {
 .budget-cell-content .budget-item-montant.revenu { color: #81c784; }
 .budget-cell-content .budget-item-montant.depense { color: #e57373; }
 .budget-cell-content .budget-recurrent { color: var(--text-secondary); font-weight: 600; }
+.budget-btn-delete {
+    flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    margin-left: 4px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(200, 60, 60, 0.25);
+    color: #ef5350;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    transition: background 0.2s ease;
+}
+.budget-btn-delete:hover {
+    background: rgba(200, 60, 60, 0.45);
+}
+.budget-btn-delete:active {
+    background: rgba(200, 60, 60, 0.6);
+}
 .btn-budget-paye {
     padding: 6px 12px;
     font-size: 0.85rem;

@@ -2264,6 +2264,7 @@ function displayBudget(items, soldeRestant) {
         return `<div class="budget-cell-content">
             <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${recur}</span>
             <span class="budget-item-montant revenu">+ ${montant} €</span>
+            <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
         </div>`;
     }
     function cellDepense(item) {
@@ -2278,6 +2279,7 @@ function displayBudget(items, soldeRestant) {
         return `<div class="budget-cell-content ${isPaye ? 'budget-item-paye' : ''}">
             <span class="budget-item-nom">${escapeHtml(item.nom)} <small>(${dateStr})</small>${recur}</span>
             <span class="budget-item-montant depense">− ${montant} €</span>
+            <button type="button" class="budget-btn-delete" onclick="deleteBudgetItem(${item.id})" aria-label="Supprimer">&times;</button>
             ${payeBtn}
         </div>`;
     }
@@ -2351,6 +2353,24 @@ async function markAsPayeBudget(itemId) {
         }
     } catch (err) {
         console.error('markAsPayeBudget:', err);
+        showToast('Erreur réseau', 'error');
+    }
+}
+
+async function deleteBudgetItem(itemId) {
+    if (!appData.isParent) return;
+    if (!confirm('Supprimer cette entrée ?')) return;
+    try {
+        const response = await fetch(`${API_BASE}/api/budget/${itemId}`, { method: 'DELETE' });
+        if (response.ok) {
+            showToast('Entrée supprimée', 'success');
+            await loadBudget();
+        } else {
+            const data = await response.json().catch(() => ({}));
+            showToast(data.error || 'Erreur lors de la suppression', 'error');
+        }
+    } catch (err) {
+        console.error('deleteBudgetItem:', err);
         showToast('Erreur réseau', 'error');
     }
 }
