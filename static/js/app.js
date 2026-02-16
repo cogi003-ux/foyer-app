@@ -236,7 +236,8 @@ let appData = {
     attenteValidation: [],
     questPhotoProofs: {}, // tacheId -> dataURL (preuves photo par quête)
     budgetYear: null,  // année du mois affiché (défaut = mois en cours)
-    budgetMonth: null // mois affiché (1-12)
+    budgetMonth: null, // mois affiché (1-12)
+    budgetCache: {}    // clé "Y-M" -> { items, solde_restant } pour affichage instantané
 };
 
 // Initialisation
@@ -2205,28 +2206,84 @@ function formatMontantBE(value) {
     return n.toLocaleString('fr-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-async function loadBudget() {
+function budgetCacheKey(year, month) {
+    return `${year}-${month}`;
+}
+
+function showBudgetSkeleton() {
+    const tbody = document.getElementById('budgetTableBody');
+    const soldeEl = document.getElementById('budgetSolde');
+    if (!tbody) return;
+    if (soldeEl) soldeEl.textContent = '—';
+    const rows = 5;
+    let html = '';
+    for (let i = 0; i < rows; i++) {
+        html += `<tr><td class="budget-td budget-td-revenus"><div class="budget-skeleton-cell"></div></td><td class="budget-td budget-td-depenses"><div class="budget-skeleton-cell"></div></td></tr>`;
+    }
+    tbody.innerHTML = html;
+}
+
+async function fetchBudgetData(year, month) {
+    const response = await fetch(`${API_BASE}/api/budget?annee=${year}&mois=${month}`);
+    if (!response.ok) {
+        if (response.status === 401) return null;
+        throw new Error('Erreur chargement budget');
+    }
+    const data = await response.json();
+    return data.success ? { items: data.items || [], solde_restant: data.solde_restant != null ? data.solde_restant : 0 } : null;
+}
+
+async function loadBudget(backgroundRefresh = false) {
     if (!appData.isParent) return;
     const { year, month } = getBudgetMonthYear();
+    const key = budgetCacheKey(year, month);
+    const cached = appData.budgetCache[key];
+
+    if (cached && !backgroundRefresh) {
+        displayBudget(cached.items, cached.solde_restant);
+        requestAnimationFrame(() => {
+            fetchBudgetData(year, month).then(data => {
+                if (data) {
+                    appData.budgetCache[key] = data;
+                    displayBudget(data.items, data.solde_restant);
+                }
+            }).catch(() => {});
+        });
+        return;
+    }
+
+    if (!backgroundRefresh) showBudgetSkeleton();
+
     try {
-        const response = await fetch(`${API_BASE}/api/budget?annee=${year}&mois=${month}`);
-        if (!response.ok) {
-            if (response.status === 401) {
-                showToast('Authentification parent requise', 'error');
-                return;
-            }
-            throw new Error('Erreur chargement budget');
-        }
-        const data = await response.json();
-        console.log(data);
-        if (data.success) {
-            displayBudget(data.items || [], data.solde_restant != null ? data.solde_restant : 0);
+        const data = await fetchBudgetData(year, month);
+        if (data) {
+            appData.budgetCache[key] = data;
+            displayBudget(data.items, data.solde_restant);
+        } else {
+            displayBudget([], 0);
         }
     } catch (e) {
         console.error('loadBudget:', e);
         showToast('Impossible de charger le budget', 'error');
         displayBudget([], 0);
+    } finally {
+        preloadNextBudgetMonth();
     }
+}
+
+function preloadNextBudgetMonth() {
+    const { year, month } = getBudgetMonthYear();
+    let nextYear = year, nextMonth = month + 1;
+    if (nextMonth > 12) { nextMonth = 1; nextYear += 1; }
+    const key = budgetCacheKey(nextYear, nextMonth);
+    if (appData.budgetCache[key]) return;
+    fetchBudgetData(nextYear, nextMonth).then(data => {
+        if (data) appData.budgetCache[key] = data;
+    }).catch(() => {});
+}
+
+function invalidateBudgetCacheForMonth(year, month) {
+    delete appData.budgetCache[budgetCacheKey(year, month)];
 }
 
 function displayBudget(items, soldeRestant) {
@@ -2333,6 +2390,8 @@ async function handleBudgetSubmit(e) {
         if (response.ok && data.success) {
             form.reset();
             showToast('Entrée ajoutée', 'success');
+            const { year: y, month: m } = getBudgetMonthYear();
+            invalidateBudgetCacheForMonth(y, m);
             await loadBudget();
         } else {
             showToast(data.error || 'Erreur lors de l\'ajout', 'error');
@@ -2353,6 +2412,8 @@ async function markAsPayeBudget(itemId) {
         });
         if (response.ok) {
             showToast('Marqué comme payé', 'success');
+            const { year: y, month: m } = getBudgetMonthYear();
+            invalidateBudgetCacheForMonth(y, m);
             await loadBudget();
         } else {
             const data = await response.json().catch(() => ({}));
@@ -2385,6 +2446,8 @@ async function doDeleteBudgetItem(itemId) {
         const response = await fetch(`${API_BASE}/api/budget/${itemId}`, opts);
         if (response.ok) {
             showToast('Entrée supprimée', 'success');
+            const { year: y, month: m } = getBudgetMonthYear();
+            invalidateBudgetCacheForMonth(y, m);
             await loadBudget();
         } else {
             const data = await response.json().catch(() => ({}));
@@ -2417,6 +2480,8 @@ async function confirmBudgetDeleteRecurrence(action) {
         const data = await response.json().catch(() => ({}));
         if (response.ok && data.success) {
             showToast(action === 'stop_recurrence' ? 'Récurrence arrêtée' : 'Occurrence supprimée pour ce mois', 'success');
+            const { year: y, month: m } = getBudgetMonthYear();
+            invalidateBudgetCacheForMonth(y, m);
             await loadBudget();
         } else {
             showToast(data.error || 'Erreur', 'error');
@@ -2471,6 +2536,8 @@ async function submitBudgetEdit(e) {
         if (response.ok && data.success) {
             closeBudgetEditModal();
             showToast('Modification enregistrée', 'success');
+            const { year: y, month: m } = getBudgetMonthYear();
+            invalidateBudgetCacheForMonth(y, m);
             await loadBudget();
         } else {
             showToast(data.error || 'Erreur', 'error');

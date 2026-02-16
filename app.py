@@ -486,14 +486,17 @@ def add_recompense_achetee_api():
 @app.route('/api/budget', methods=['GET'])
 @require_parent_auth
 def get_budget():
-    """Liste les entrées du budget familial pour le mois demandé. Query: annee, mois (défaut = mois en cours)."""
+    """Liste les entrées du budget familial pour le mois demandé. Query: annee, mois (défaut = mois en cours). Une seule requête DB (pas de double appel pour le solde)."""
     try:
         from datetime import date
         today = date.today()
         annee = request.args.get('annee', type=int) or today.year
         mois = request.args.get('mois', type=int) or today.month
         items = get_all_budget_familial(annee, mois)
-        solde = get_solde_restant_budget(annee, mois)
+        revenus = sum(float(r.get('montant', 0) or 0) for r in items if (r.get('type') or '').lower() == 'revenu')
+        depenses_payees = sum(float(r.get('montant', 0) or 0) for r in items if (r.get('type') or '').lower() == 'depense' and (r.get('statut') or '').lower() == 'paye')
+        depenses_prevues = sum(float(r.get('montant', 0) or 0) for r in items if (r.get('type') or '').lower() == 'depense' and (r.get('statut') or '').lower() == 'prevu')
+        solde = round(revenus - depenses_payees - depenses_prevues, 2)
         return jsonify({
             'success': True,
             'items': items,

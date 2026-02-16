@@ -920,6 +920,7 @@ def get_all_budget_familial(annee: Optional[int] = None, mois: Optional[int] = N
       sont projetées dans le mois demandé (même jour), statut='prevu'.
     - Entrées récurrentes trimestrielles : lignes dont l'écart avec le mois demandé est 3, 6, 9... mois,
       projetées dans le mois demandé (même jour), statut='prevu'.
+    Optimisation : au plus 4 requêtes SQL par appel (pas de boucle SQL par ligne, pas de N+1).
     """
     client = get_supabase_client()
     if not client:

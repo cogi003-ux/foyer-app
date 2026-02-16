@@ -417,10 +417,21 @@ body {
 
 .tab-content {
     display: none;
+    will-change: opacity;
 }
 
 .tab-content.active {
     display: block;
+    animation: tab-content-in 0.25s ease-out;
+}
+
+@keyframes tab-content-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tab-content.active { animation: none; }
 }
 
 /* ——— 5. BOUTONS (effet 3D arcade / bonbon) ——— */
@@ -2330,6 +2341,21 @@ body.theme-enfant .cosmic-bg {
 }
 .budget-table th:first-child { border-radius: 14px 0 0 0; }
 .budget-table th:last-child { border-radius: 0 14px 0 0; }
+.budget-skeleton-cell {
+    height: 48px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+    background-size: 200% 100%;
+    animation: budget-skeleton-shine 1.2s ease-in-out infinite;
+}
+@keyframes budget-skeleton-shine {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .budget-skeleton-cell { animation: none; background: rgba(255,255,255,0.08); }
+}
+
 .budget-table td {
     padding: 12px 16px;
     vertical-align: top;
