@@ -18,6 +18,7 @@ TABLE_ATTENTE_VALIDATION = 'attente_validation'
 TABLE_CLASSEMENT = 'classement'
 TABLE_RECOMPENSES_PERSONNALISEES = 'recompenses_personnalisees'
 TABLE_RECOMPENSES_ACHETEES = 'recompenses_achetees'
+TABLE_BUDGET_FAMILIAL = 'budget_familial'
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 def log_debug(message: str):
@@ -784,3 +785,204 @@ def add_recompense_achetee(recompense_data: Dict) -> bool:
     except Exception as e:
         log_error(f"Erreur lors de l'ajout de la récompense achetée: {e}")
         return False
+
+
+# ========== FONCTIONS POUR LE BUDGET FAMILIAL ==========
+
+BUDGET_TABLE_SQL = f"""
+CREATE TABLE {TABLE_BUDGET_FAMILIAL} (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('revenu', 'depense')),
+    nom VARCHAR(255) NOT NULL,
+    montant NUMERIC(12, 2) NOT NULL,
+    statut VARCHAR(20) NOT NULL DEFAULT 'prevu' CHECK (statut IN ('prevu', 'paye')),
+    date_echeance DATE,
+    est_recurrent BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+"""
+
+def get_all_budget_familial() -> List[Dict]:
+    """Récupère toutes les entrées du budget familial."""
+    client = get_supabase_client()
+    if not client:
+        return []
+    try:
+        response = client.table(TABLE_BUDGET_FAMILIAL).select('*').order('date_echeance', desc=False).order('id', desc=False).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        error_msg = str(e).lower()
+        if 'relation' in error_msg and 'does not exist' in error_msg:
+            log_debug(f"Table '{TABLE_BUDGET_FAMILIAL}' n'existe pas encore")
+            return []
+        log_error(f"Erreur lors de la récupération du budget: {e}")
+        return []
+
+
+def add_budget_familial(data: Dict) -> tuple[bool, str]:
+    """
+    Ajoute une entrée au budget familial.
+    data: type (revenu/depense), nom, montant, statut (prevu/paye), date_echeance (optionnel), est_recurrent (optionnel).
+    Retourne (success, message).
+    """
+    client = get_supabase_client()
+    if not client:
+        return False, "Supabase non configuré"
+    if not ensure_table_exists(TABLE_BUDGET_FAMILIAL, BUDGET_TABLE_SQL):
+        return False, f"La table '{TABLE_BUDGET_FAMILIAL}' n'existe pas. Exécutez le SQL dans Supabase."
+    try:
+        type_val = str(data.get('type', '')).strip().lower()
+        if type_val not in ('revenu', 'depense'):
+            return False, "type doit être 'revenu' ou 'depense'"
+        statut = str(data.get('statut', 'prevu')).strip().lower()
+        if statut not in ('prevu', 'paye'):
+            return False, "statut doit être 'prevu' ou 'paye'"
+        nom = str(data.get('nom', '')).strip()
+        if not nom:
+            return False, "Le nom est requis"
+        try:
+            montant = float(data.get('montant', 0))
+        except (TypeError, ValueError):
+            return False, "montant invalide"
+        date_echeance = data.get('date_echeance')
+        if date_echeance is not None and date_echeance != '':
+            date_echeance = str(date_echeance).strip()
+        else:
+            date_echeance = None
+        est_recurrent = bool(data.get('est_recurrent', False))
+        row = {
+            'type': type_val,
+            'nom': nom,
+            'montant': round(montant, 2),
+            'statut': statut,
+            'date_echeance': date_echeance,
+            'est_recurrent': est_recurrent
+        }
+        response = client.table(TABLE_BUDGET_FAMILIAL).insert(row).execute()
+        if response.data:
+            return True, "Entrée ajoutée"
+        return False, "Aucune donnée retournée"
+    except Exception as e:
+        log_error(f"Erreur add_budget_familial: {e}")
+        return False, str(e)
+
+
+def update_budget_familial(item_id: int, update_data: Dict) -> bool:
+    """Met à jour une entrée budget : statut (paye/prevu) et/ou montant."""
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        payload = {}
+        if 'statut' in update_data:
+            s = str(update_data['statut']).strip().lower()
+            if s in ('prevu', 'paye'):
+                payload['statut'] = s
+        if 'montant' in update_data:
+            try:
+                payload['montant'] = round(float(update_data['montant']), 2)
+            except (TypeError, ValueError):
+                pass
+        if 'nom' in update_data and str(update_data['nom']).strip():
+            payload['nom'] = str(update_data['nom']).strip()
+        if 'date_echeance' in update_data:
+            val = update_data['date_echeance']
+            payload['date_echeance'] = str(val).strip() if val is not None and str(val).strip() else None
+        if 'est_recurrent' in update_data:
+            payload['est_recurrent'] = bool(update_data['est_recurrent'])
+        if not payload:
+            return False
+        client.table(TABLE_BUDGET_FAMILIAL).update(payload).eq('id', item_id).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur update_budget_familial: {e}")
+        return False
+
+
+def delete_budget_familial(item_id: int) -> bool:
+    """Supprime une entrée du budget familial par id."""
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        client.table(TABLE_BUDGET_FAMILIAL).delete().eq('id', item_id).execute()
+        return True
+    except Exception as e:
+        log_error(f"Erreur delete_budget_familial: {e}")
+        return False
+
+
+def get_solde_restant_budget() -> float:
+    """
+    Solde restant = Somme Revenus - Somme Dépenses Payées - Somme Dépenses Prévues.
+    """
+    client = get_supabase_client()
+    if not client:
+        return 0.0
+    try:
+        rows = client.table(TABLE_BUDGET_FAMILIAL).select('type, statut, montant').execute()
+        data = rows.data if rows.data else []
+        revenus = sum(float(r.get('montant', 0) or 0) for r in data if (r.get('type') or '').lower() == 'revenu')
+        depenses_payees = sum(float(r.get('montant', 0) or 0) for r in data if (r.get('type') or '').lower() == 'depense' and (r.get('statut') or '').lower() == 'paye')
+        depenses_prevues = sum(float(r.get('montant', 0) or 0) for r in data if (r.get('type') or '').lower() == 'depense' and (r.get('statut') or '').lower() == 'prevu')
+        return round(revenus - depenses_payees - depenses_prevues, 2)
+    except Exception as e:
+        log_error(f"Erreur get_solde_restant_budget: {e}")
+        return 0.0
+
+
+def duplicate_budget_recurrent_mois_courant() -> tuple[int, str]:
+    """
+    Duplique toutes les lignes budget_familial avec est_recurrent = True :
+    crée une nouvelle ligne par entrée récurrente avec date_echeance = même jour dans le mois en cours,
+    statut = 'prevu'. À exécuter au 1er de chaque mois (cron ou script de maintenance).
+    Retourne (nombre de lignes créées, message).
+    """
+    client = get_supabase_client()
+    if not client:
+        return 0, "Supabase non configuré"
+    try:
+        response = client.table(TABLE_BUDGET_FAMILIAL).select('*').eq('est_recurrent', True).execute()
+        rows = response.data if response.data else []
+        if not rows:
+            return 0, "Aucune entrée récurrente à dupliquer"
+        now = datetime.now()
+        year, month = now.year, now.month
+        created = 0
+        for r in rows:
+            type_val = (r.get('type') or 'depense').lower()
+            nom = str(r.get('nom') or '').strip()
+            montant = float(r.get('montant') or 0)
+            date_orig = r.get('date_echeance')
+            if date_orig:
+                try:
+                    if isinstance(date_orig, str):
+                        parts = date_orig.split('-')
+                        day = int(parts[2]) if len(parts) >= 3 else 1
+                    else:
+                        day = getattr(date_orig, 'day', 1)
+                except (IndexError, ValueError, TypeError):
+                    day = 1
+            else:
+                day = 1
+            try:
+                from calendar import monthrange
+                max_day = monthrange(year, month)[1]
+                day = min(day, max_day)
+            except Exception:
+                day = min(day, 28)
+            new_date = f"{year}-{month:02d}-{day:02d}"
+            new_row = {
+                'type': type_val,
+                'nom': nom,
+                'montant': round(montant, 2),
+                'statut': 'prevu',
+                'date_echeance': new_date,
+                'est_recurrent': True
+            }
+            client.table(TABLE_BUDGET_FAMILIAL).insert(new_row).execute()
+            created += 1
+        return created, f"{created} entrée(s) récurrente(s) dupliquée(s) pour le mois en cours"
+    except Exception as e:
+        log_error(f"Erreur duplicate_budget_recurrent_mois_courant: {e}")
+        return 0, str(e)

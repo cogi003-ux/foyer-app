@@ -106,6 +106,8 @@
             <a href="/boutique" class="nav-game__item tab-btn" data-tab="boutique" aria-label="Boutique"><i class="fas fa-gem nav-game__icon"></i></a>
             <a href="/calendrier" class="nav-game__item tab-btn" data-tab="calendrier" aria-label="Calendrier"><i class="fas fa-calendar-days nav-game__icon"></i></a>
             <a href="/classement" class="nav-game__item tab-btn" data-tab="classement" aria-label="Classement"><i class="fas fa-trophy nav-game__icon"></i></a>
+            <a href="/famille" id="tabFamille" class="nav-game__item tab-btn" data-tab="famille" aria-label="Famille" style="display: none;"><i class="fas fa-users nav-game__icon"></i></a>
+            <a href="/budget" id="tabBudget" class="nav-game__item tab-btn" data-tab="budget" aria-label="Budget" style="display: none;"><i class="fas fa-wallet nav-game__icon"></i></a>
         </nav>
 
         <!-- Barre de progression des quêtes du jour -->
@@ -306,6 +308,62 @@
                 <h2>🏆 Tableau d'Honneur</h2>
                 <div id="classementList" class="classement-list">
                     <!-- Le classement sera ajouté dynamiquement -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Onglet Gestion du Budget (Parents uniquement) -->
+        <section id="budget" class="tab-content">
+            <div class="glass-card budget-card">
+                <h2>💰 Gestion du Budget</h2>
+                <p class="budget-parent-only">Espace réservé aux parents.</p>
+
+                <div class="budget-solde-block">
+                    <div class="budget-solde" id="budgetSolde">0,00 €</div>
+                    <p class="budget-solde-label">Solde restant</p>
+                </div>
+
+                <form id="budgetForm" class="budget-form">
+                    <h3>Ajouter une entrée</h3>
+                    <div class="budget-form-row">
+                        <div class="form-group">
+                            <label for="budget-nom">Nom</label>
+                            <input type="text" id="budget-nom" name="nom" required placeholder="Ex: Salaire mars">
+                        </div>
+                        <div class="form-group">
+                            <label for="budget-montant">Montant (€)</label>
+                            <input type="number" id="budget-montant" name="montant" step="0.01" min="0" required placeholder="0,00" lang="fr-BE">
+                        </div>
+                        <div class="form-group">
+                            <label for="budget-type">Type</label>
+                            <select id="budget-type" name="type" required>
+                                <option value="revenu">Revenu</option>
+                                <option value="depense">Dépense</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="budget-recurrent">Récurrent</label>
+                            <select id="budget-recurrent" name="est_recurrent">
+                                <option value="non">Non</option>
+                                <option value="oui">Oui</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary">Ajouter</button>
+                    </div>
+                </form>
+
+                <div class="budget-table-wrap">
+                    <table class="budget-table" aria-label="Budget : revenus et dépenses">
+                        <thead>
+                            <tr>
+                                <th scope="col">Revenus</th>
+                                <th scope="col">Dépenses</th>
+                            </tr>
+                        </thead>
+                        <tbody id="budgetTableBody">
+                            <!-- Rempli par displayBudget() -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>

@@ -287,6 +287,8 @@ async function initializeApp() {
     // Écouter les formulaires
     document.getElementById('tacheForm').addEventListener('submit', handleTacheSubmit);
     document.getElementById('messageForm').addEventListener('submit', handleMessageSubmit);
+    const budgetFormEl = document.getElementById('budgetForm');
+    if (budgetFormEl) budgetFormEl.addEventListener('submit', handleBudgetSubmit);
     initMessagePhotoPicker();
     const messageModalClose = document.getElementById('messageExpandModalClose');
     const messageModal = document.getElementById('messageExpandModal');
@@ -401,6 +403,7 @@ async function updateData(activeTab) {
         if (activeTab === 'calendrier') await loadCalendrier('aujourdhui');
         else if (activeTab === 'classement') { /* déjà fait */ }
         else if (activeTab === 'famille' && appData.isParent) await loadFamille();
+        else if (activeTab === 'budget' && appData.isParent) await loadBudget();
         if (activeTab === 'taches') await loadAttenteValidation(); // Badge en temps réel
         if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
     } catch (e) {
@@ -452,7 +455,9 @@ const PATH_TO_TAB = {
     '/messages': 'messages',
     '/boutique': 'boutique',
     '/calendrier': 'calendrier',
-    '/classement': 'classement'
+    '/classement': 'classement',
+    '/famille': 'famille',
+    '/budget': 'budget'
 };
 const TAB_TO_PATH = {
     dashboard: '/',
@@ -460,7 +465,9 @@ const TAB_TO_PATH = {
     messages: '/messages',
     boutique: '/boutique',
     calendrier: '/calendrier',
-    classement: '/classement'
+    classement: '/classement',
+    famille: '/famille',
+    budget: '/budget'
 };
 
 function getTabFromPathname() {
@@ -1833,8 +1840,12 @@ function updateParentIndicator() {
 
 function updateFamilleTabVisibility() {
     const tabFamille = document.getElementById('tabFamille');
+    const tabBudget = document.getElementById('tabBudget');
     if (tabFamille) {
         tabFamille.style.display = appData.isParent ? 'flex' : 'none';
+    }
+    if (tabBudget) {
+        tabBudget.style.display = appData.isParent ? 'flex' : 'none';
     }
 }
 
@@ -2142,6 +2153,134 @@ async function saveConfigFamille() {
     } catch (error) {
         console.error('Erreur lors de la sauvegarde:', error);
         showToast('Erreur lors de la sauvegarde', 'error');
+    }
+}
+
+// ========== BUDGET FAMILIAL (PARENTS) ==========
+
+function formatMontantBE(value) {
+    const n = typeof value === 'number' ? value : parseFloat(value) || 0;
+    return n.toLocaleString('fr-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+async function loadBudget() {
+    if (!appData.isParent) return;
+    try {
+        const response = await fetch(`${API_BASE}/api/budget`);
+        if (!response.ok) {
+            if (response.status === 401) {
+                showToast('Authentification parent requise', 'error');
+                return;
+            }
+            throw new Error('Erreur chargement budget');
+        }
+        const data = await response.json();
+        if (data.success) {
+            displayBudget(data.items || [], data.solde_restant != null ? data.solde_restant : 0);
+        }
+    } catch (e) {
+        console.error('loadBudget:', e);
+        showToast('Impossible de charger le budget', 'error');
+        displayBudget([], 0);
+    }
+}
+
+function displayBudget(items, soldeRestant) {
+    const soldeEl = document.getElementById('budgetSolde');
+    const tbody = document.getElementById('budgetTableBody');
+    if (!soldeEl || !tbody) return;
+
+    soldeEl.textContent = formatMontantBE(soldeRestant) + ' €';
+
+    const revenus = items.filter(i => (i.type || '').toLowerCase() === 'revenu');
+    const depenses = items.filter(i => (i.type || '').toLowerCase() === 'depense');
+    const maxRows = Math.max(revenus.length, depenses.length, 1);
+
+    function cellRevenu(item) {
+        if (!item) return '<span class="budget-cell-empty">—</span>';
+        const montant = formatMontantBE(item.montant);
+        const dateStr = item.date_echeance ? new Date(item.date_echeance).toLocaleDateString('fr-BE') : '';
+        const recur = item.est_recurrent ? ' <small class="budget-recurrent">(récurrent)</small>' : '';
+        return `<div class="budget-cell-content">
+            <span class="budget-item-nom">${escapeHtml(item.nom)}${dateStr ? ' <small>(' + dateStr + ')</small>' : ''}${recur}</span>
+            <span class="budget-item-montant revenu">+ ${montant} €</span>
+        </div>`;
+    }
+    function cellDepense(item) {
+        if (!item) return '<span class="budget-cell-empty">—</span>';
+        const montant = formatMontantBE(item.montant);
+        const isPaye = (item.statut || '').toLowerCase() === 'paye';
+        const dateStr = item.date_echeance ? new Date(item.date_echeance).toLocaleDateString('fr-BE') : '';
+        const recur = item.est_recurrent ? ' <small class="budget-recurrent">(récurrent)</small>' : '';
+        const payeBtn = !isPaye
+            ? `<button type="button" class="btn-budget-paye" onclick="markAsPayeBudget(${item.id})">Marquer comme payé</button>`
+            : '<span class="budget-item-paye">Payé</span>';
+        return `<div class="budget-cell-content ${isPaye ? 'budget-item-paye' : ''}">
+            <span class="budget-item-nom">${escapeHtml(item.nom)}${dateStr ? ' <small>(' + dateStr + ')</small>' : ''}${recur}</span>
+            <span class="budget-item-montant depense">− ${montant} €</span>
+            ${payeBtn}
+        </div>`;
+    }
+
+    let html = '';
+    for (let i = 0; i < maxRows; i++) {
+        const rev = revenus[i] || null;
+        const dep = depenses[i] || null;
+        html += `<tr><td class="budget-td budget-td-revenus">${cellRevenu(rev)}</td><td class="budget-td budget-td-depenses">${cellDepense(dep)}</td></tr>`;
+    }
+    tbody.innerHTML = html;
+}
+
+async function handleBudgetSubmit(e) {
+    e.preventDefault();
+    if (!appData.isParent) return;
+    const form = e.target;
+    const type = (form.querySelector('[name="type"]') || {}).value || 'depense';
+    const nom = (form.querySelector('[name="nom"]') || {}).value || '';
+    const montant = parseFloat((form.querySelector('[name="montant"]') || {}).value) || 0;
+    const estRecurrent = (form.querySelector('[name="est_recurrent"]') || {}).value === 'oui';
+    if (!nom.trim()) {
+        showToast('Indique un nom', 'error');
+        return;
+    }
+    try {
+        const response = await fetch(`${API_BASE}/api/budget`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, nom: nom.trim(), montant, statut: 'prevu', est_recurrent: estRecurrent })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.success) {
+            form.reset();
+            showToast('Entrée ajoutée', 'success');
+            await loadBudget();
+        } else {
+            showToast(data.error || 'Erreur lors de l\'ajout', 'error');
+        }
+    } catch (err) {
+        console.error('handleBudgetSubmit:', err);
+        showToast('Erreur réseau', 'error');
+    }
+}
+
+async function markAsPayeBudget(itemId) {
+    if (!appData.isParent) return;
+    try {
+        const response = await fetch(`${API_BASE}/api/budget/${itemId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ statut: 'paye' })
+        });
+        if (response.ok) {
+            showToast('Marqué comme payé', 'success');
+            await loadBudget();
+        } else {
+            const data = await response.json().catch(() => ({}));
+            showToast(data.error || 'Erreur', 'error');
+        }
+    } catch (err) {
+        console.error('markAsPayeBudget:', err);
+        showToast('Erreur réseau', 'error');
     }
 }
 

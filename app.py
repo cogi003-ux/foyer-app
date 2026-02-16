@@ -13,7 +13,9 @@ from database import (
     add_attente_validation, get_attente_validation, delete_attente_validation, validate_attente_and_mark_completee,
     get_classement, update_classement,
     get_recompenses_personnalisees, add_recompense_personnalisee,
-    get_recompenses_achetees, add_recompense_achetee
+    get_recompenses_achetees, add_recompense_achetee,
+    get_all_budget_familial, add_budget_familial, update_budget_familial, delete_budget_familial,
+    get_solde_restant_budget
 )
 
 app = Flask(__name__)
@@ -58,6 +60,8 @@ def index():
 @app.route('/boutique')
 @app.route('/calendrier')
 @app.route('/classement')
+@app.route('/famille')
+@app.route('/budget')
 def index_spa(path=None):
     """Routes SPA : même page pour navigation par lien (Tableau, Quêtes, etc.)."""
     return render_template('index.html')
@@ -475,6 +479,66 @@ def add_recompense_achetee_api():
         else:
             return jsonify({'success': False, 'error': 'Erreur lors de l\'ajout'}), 500
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# API Budget Parents (format décimal : nombres numériques en JSON ; affichage fr-BE côté frontend si besoin)
+@app.route('/api/budget', methods=['GET'])
+@require_parent_auth
+def get_budget():
+    """Liste les entrées du budget familial et le solde restant."""
+    try:
+        items = get_all_budget_familial()
+        solde = get_solde_restant_budget()
+        return jsonify({
+            'success': True,
+            'items': items,
+            'solde_restant': solde
+        })
+    except Exception as e:
+        print(f"[ERROR] get_budget: {e}")
+        return jsonify({'success': False, 'error': str(e), 'items': [], 'solde_restant': 0}), 500
+
+@app.route('/api/budget', methods=['POST'])
+@require_parent_auth
+def add_budget():
+    """Ajoute une entrée (revenu ou dépense). Body : type, nom, montant, statut (optionnel), date_echeance (optionnel), est_recurrent (optionnel, booléen)."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'Aucune donnée reçue'}), 400
+        success, message = add_budget_familial(data)
+        if success:
+            return jsonify({'success': True, 'message': message or 'Entrée ajoutée'})
+        return jsonify({'success': False, 'error': message or 'Erreur lors de l\'ajout'}), 400
+    except Exception as e:
+        print(f"[ERROR] add_budget: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/budget/<int:item_id>', methods=['PATCH'])
+@require_parent_auth
+def update_budget(item_id):
+    """Modifie le statut (paye/prevu) ou le montant d'une entrée."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'Aucune donnée reçue'}), 400
+        if update_budget_familial(item_id, data):
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': 'Erreur lors de la mise à jour'}), 400
+    except Exception as e:
+        print(f"[ERROR] update_budget: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/budget/<int:item_id>', methods=['DELETE'])
+@require_parent_auth
+def delete_budget(item_id):
+    """Supprime une entrée du budget familial."""
+    try:
+        if delete_budget_familial(item_id):
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': 'Erreur lors de la suppression'}), 500
+    except Exception as e:
+        print(f"[ERROR] delete_budget: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':

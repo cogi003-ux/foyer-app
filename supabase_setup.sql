@@ -93,6 +93,18 @@ CREATE TABLE IF NOT EXISTS recompenses_achetees (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Table budget familial (espace Budget Parents)
+CREATE TABLE IF NOT EXISTS budget_familial (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('revenu', 'depense')),
+    nom VARCHAR(255) NOT NULL,
+    montant NUMERIC(12, 2) NOT NULL,
+    statut VARCHAR(20) NOT NULL DEFAULT 'prevu' CHECK (statut IN ('prevu', 'paye')),
+    date_echeance DATE,
+    est_recurrent BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Index pour améliorer les performances
 CREATE INDEX IF NOT EXISTS idx_taches_statut ON taches(statut);
 CREATE INDEX IF NOT EXISTS idx_taches_type ON taches(type);
@@ -102,6 +114,8 @@ CREATE INDEX IF NOT EXISTS idx_taches_completees_user ON taches_completees(user_
 CREATE INDEX IF NOT EXISTS idx_attente_validation_user ON attente_validation(user_name);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_classement_points ON classement(points DESC);
+CREATE INDEX IF NOT EXISTS idx_budget_familial_type ON budget_familial(type);
+CREATE INDEX IF NOT EXISTS idx_budget_familial_date_echeance ON budget_familial(date_echeance);
 
 -- Insérer la configuration par défaut si elle n'existe pas
 INSERT INTO config_famille (id, parents, ados, enfants, points_foyer)
